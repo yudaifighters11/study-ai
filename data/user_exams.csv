@@ -1,0 +1,4 @@
+"user_id","exam_id","is_current","planned_exam_date","target_syllabus_version","registered_at","last_studied_at"
+"user_001","it_passport","false","2026-07-22","シラバスVer.6.5","2026-07-05T00:00:00.000Z","2026-07-07T13:18:07.991Z"
+"user_001","fe","false","2026-07-23","シラバスVer.9.2","2026-07-06T11:46:22.702Z","2026-07-11T14:10:58.100Z"
+"user_001","toeic_reading","true","2026-07-23",,"2026-07-09T14:34:50.502Z","2026-07-10T17:19:47.446Z"

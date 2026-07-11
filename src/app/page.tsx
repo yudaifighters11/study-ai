@@ -1,65 +1,381 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { WeakPointStats } from "@/lib/analysis/computeWeakPointStats";
+import { MISTAKE_TYPE_LABELS, MistakeType } from "@/types/enums";
+import { RegisteredExam } from "@/lib/examPresenter";
+import { DEFAULT_EXAM_THEME, getExamTheme } from "@/components/examTheme";
+
+function IconWrapper({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className ?? "h-4 w-4"}
+    >
+      {children}
+    </svg>
+  );
+}
+
+function ListIcon(props: { className?: string }) {
+  return (
+    <IconWrapper {...props}>
+      <path d="M8 6h12M8 12h12M8 18h12" />
+      <path d="M4 6h.01M4 12h.01M4 18h.01" />
+    </IconWrapper>
+  );
+}
+
+function ChartIcon(props: { className?: string }) {
+  return (
+    <IconWrapper {...props}>
+      <path d="M5 19V10M12 19V5M19 19v-6" />
+    </IconWrapper>
+  );
+}
+
+function FlagIcon(props: { className?: string }) {
+  return (
+    <IconWrapper {...props}>
+      <path d="M6 20V4" />
+      <path d="M6 5h11l-2.5 3.5L17 12H6" />
+    </IconWrapper>
+  );
+}
+
+function AlertIcon(props: { className?: string }) {
+  return (
+    <IconWrapper {...props}>
+      <path d="M12 4 3 20h18L12 4Z" />
+      <path d="M12 10v4" />
+      <path d="M12 17h.01" />
+    </IconWrapper>
+  );
+}
+
+function CalendarIcon(props: { className?: string }) {
+  return (
+    <IconWrapper {...props}>
+      <rect x="4" y="5" width="16" height="15" rx="2" />
+      <path d="M4 10h16" />
+      <path d="M8 3v4M16 3v4" />
+    </IconWrapper>
+  );
+}
+
+function ChevronDownIcon(props: { className?: string }) {
+  return (
+    <IconWrapper {...props}>
+      <path d="M6 9l6 6 6-6" />
+    </IconWrapper>
+  );
+}
+
+function ChevronRightIcon(props: { className?: string }) {
+  return (
+    <IconWrapper {...props}>
+      <path d="M9 6l6 6-6 6" />
+    </IconWrapper>
+  );
+}
+
+export default function HomePage() {
+  const router = useRouter();
+  const [currentExam, setCurrentExam] = useState<RegisteredExam | null>(null);
+  const [otherExams, setOtherExams] = useState<RegisteredExam[]>([]);
+  const [plannedExamDate, setPlannedExamDate] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState<WeakPointStats | null>(null);
+  const [statsError, setStatsError] = useState<string | null>(null);
+  const [isEditingDate, setIsEditingDate] = useState(false);
+
+  const loadStats = async () => {
+    try {
+      const res = await fetch("/api/analysis");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "学習状況の取得に失敗しました");
+      setStats(data.stats);
+      setStatsError(null);
+    } catch (e) {
+      setStatsError(e instanceof Error ? e.message : "不明なエラーが発生しました");
+    }
+  };
+
+  useEffect(() => {
+    const loadCurrentExam = async () => {
+      try {
+        const res = await fetch("/api/user/exams");
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "現在の試験の取得に失敗しました");
+        if (!data.current) {
+          router.replace("/exam-select");
+          return;
+        }
+        setCurrentExam(data.current);
+        setOtherExams(
+          (data.registered as RegisteredExam[]).filter((r) => !r.is_current)
+        );
+        setPlannedExamDate(data.current.planned_exam_date ?? "");
+        if (!data.current.planned_exam_date) {
+          setIsEditingDate(true);
+        }
+        await loadStats();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "不明なエラーが発生しました");
+      } finally {
+        setLoading(false);
+      }
+    };
+    void loadCurrentExam();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plannedExamDate }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "受験予定日の設定に失敗しました");
+      setCurrentExam((prev) => (prev ? { ...prev, ...data.userExam } : prev));
+      await loadStats();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "不明なエラーが発生しました");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const accuracyPercent = stats ? Math.round(stats.overallAccuracyRate * 100) : 0;
+  const weakAreaTop3 = stats?.weakAreaTop3 ?? [];
+  const examTheme = currentExam ? getExamTheme(currentExam.exam_id) : DEFAULT_EXAM_THEME;
+  const ExamIcon = examTheme.icon;
+  const topMistakeLabel =
+    stats && stats.recentMistakeTypeFrequency.length > 0
+      ? MISTAKE_TYPE_LABELS[
+          stats.recentMistakeTypeFrequency[0].mistakeType as MistakeType
+        ]
+      : "データ収集中";
+
+  return (
+    <div className="flex min-h-screen justify-center bg-gray-100">
+      <div className="flex w-full max-w-[430px] md:max-w-2xl flex-col border-x border-gray-200 bg-gray-50">
+        <header className="border-b border-gray-200 bg-white px-4 py-4 md:px-6 md:py-5">
+          <p className="text-center text-base font-semibold text-gray-900">ホーム</p>
+        </header>
+
+        {loading || !currentExam ? (
+          <p className="p-4 text-sm text-gray-500">読み込み中...</p>
+        ) : (
+          <main className="flex flex-col gap-4 p-4 md:p-6">
+            {/* 現在選択中の試験(切り替えは既存の試験選択画面へ遷移するのみ) */}
+            <Link
+              href="/exam-select"
+              className="flex w-fit min-w-0 items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1.5"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+              <ExamIcon className={`h-5 w-5 shrink-0 ${examTheme.fg}`} />
+              <p className="truncate text-base font-bold text-gray-900">
+                {currentExam.name}
+              </p>
+              <ChevronDownIcon className="h-4 w-4 shrink-0 text-gray-400" />
+            </Link>
+
+            {/* メインの学習導線: 学習メニュー画面(/study)を経由する */}
+            <button
+              type="button"
+              onClick={() => router.push("/study")}
+              className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-sm"
             >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+              <div className="flex items-center gap-3">
+                <div
+                  className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${examTheme.solidBg}`}
+                >
+                  <ExamIcon className="h-7 w-7 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-lg font-bold text-gray-900">
+                    {currentExam.name}
+                  </p>
+                  <p className="text-sm font-semibold text-gray-700">学習を始める</p>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500">問題演習へ進む</p>
+              <span className="mt-1 flex w-full items-center justify-center gap-1 rounded-full bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white">
+                今すぐ始める
+                <ChevronRightIcon className="h-4 w-4" />
+              </span>
+            </button>
+
+            <div className="grid grid-cols-2 gap-3">
+              <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                <div className="flex items-center gap-1.5">
+                  <ListIcon className="h-3.5 w-3.5 text-gray-400" />
+                  <p className="text-xs text-gray-500">今日の問題</p>
+                </div>
+                <p className="mt-1 text-2xl font-bold text-gray-900">
+                  {stats ? stats.answeredToday : 0}問
+                </p>
+              </section>
+
+              <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                <div className="flex items-center gap-1.5">
+                  <ChartIcon className="h-3.5 w-3.5 text-gray-400" />
+                  <p className="text-xs text-gray-500">現在の正答率</p>
+                </div>
+                <p className="mt-1 text-2xl font-bold text-gray-900">{accuracyPercent}%</p>
+              </section>
+            </div>
+
+            <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-1.5">
+                <FlagIcon className="h-3.5 w-3.5 text-gray-400" />
+                <p className="text-xs text-gray-500">苦手分野TOP3</p>
+              </div>
+              {weakAreaTop3.length === 0 ? (
+                <p className="mt-1 text-sm text-gray-400">データ収集中</p>
+              ) : (
+                <ul className="mt-2 flex flex-col gap-2.5">
+                  {weakAreaTop3.map((c, index) => {
+                    const percent = Math.round(c.accuracyRate * 100);
+                    const params = new URLSearchParams(
+                      c.level === "major"
+                        ? { majorCategory: c.label }
+                        : { middleCategory: c.label }
+                    );
+                    return (
+                      <li key={c.label}>
+                        <Link
+                          href={`/quiz?${params.toString()}`}
+                          className="flex items-center gap-2 text-sm"
+                        >
+                          <span className="shrink-0 text-xs font-semibold text-gray-400">
+                            {index + 1}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-center justify-between text-gray-900">
+                              <span className="truncate">{c.label}</span>
+                              <span className="shrink-0 text-xs text-gray-500">
+                                {percent}%({c.correctAnswers}/{c.totalAnswers})
+                              </span>
+                            </span>
+                            <span className="mt-1 block h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                              <span
+                                className="block h-full rounded-full bg-orange-400"
+                                style={{ width: `${percent}%` }}
+                              />
+                            </span>
+                          </span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+
+            <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-1.5">
+                <AlertIcon className="h-3.5 w-3.5 text-gray-400" />
+                <p className="text-xs text-gray-500">最近のミス傾向</p>
+              </div>
+              <p className="mt-1 text-base font-bold text-gray-900">{topMistakeLabel}</p>
+            </section>
+
+            {statsError && <p className="text-xs text-red-600">{statsError}</p>}
+
+            {otherExams.length > 0 && (
+              <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                <p className="text-xs text-gray-500">他の試験</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {otherExams.map((exam) => {
+                    const theme = getExamTheme(exam.exam_id);
+                    const OtherIcon = theme.icon;
+                    return (
+                      <Link
+                        key={exam.exam_id}
+                        href="/exam-select"
+                        className="flex items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1.5 text-sm text-gray-700"
+                      >
+                        <OtherIcon className={`h-4 w-4 ${theme.fg}`} />
+                        {exam.name}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-1.5">
+                <CalendarIcon className="h-3.5 w-3.5 text-gray-400" />
+                <p className="text-xs text-gray-500">受験予定日</p>
+              </div>
+              {!isEditingDate ? (
+                <div className="mt-1 flex items-center justify-between">
+                  <div>
+                    <p className="text-base font-semibold text-gray-900">
+                      {plannedExamDate || "未設定"}
+                    </p>
+                    <p className="text-xs text-gray-400">{currentExam.name}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingDate(true)}
+                    className="rounded-full border border-blue-600 px-3 py-1 text-xs font-semibold text-blue-600"
+                  >
+                    変更
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={plannedExamDate}
+                    onChange={(e) => setPlannedExamDate(e.target.value)}
+                    className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await handleSave();
+                      setIsEditingDate(false);
+                    }}
+                    disabled={!plannedExamDate || saving}
+                    className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-gray-300"
+                  >
+                    {saving ? "保存中..." : "保存"}
+                  </button>
+                </div>
+              )}
+              {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+              {currentExam?.target_syllabus_version && (
+                <p className="mt-2 text-xs text-gray-400">
+                  対象シラバス: {currentExam.target_syllabus_version}
+                </p>
+              )}
+            </section>
+          </main>
+        )}
+      </div>
     </div>
   );
 }

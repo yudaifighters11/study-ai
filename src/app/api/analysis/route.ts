@@ -1,0 +1,67 @@
+import { NextResponse } from "next/server";
+import { getFixedUserId } from "@/lib/config";
+import { getExamLabel } from "@/lib/csv/examRepository";
+import { getCurrentUserExam } from "@/lib/csv/userExamRepository";
+import { getAnswerHistoryByUser } from "@/lib/csv/answerHistoryRepository";
+import { getMistakeAnalysesByUser } from "@/lib/csv/mistakeAnalysisRepository";
+import { getAllQuestions } from "@/lib/csv/questionRepository";
+import { computeWeakPointStats } from "@/lib/analysis/computeWeakPointStats";
+import { generateStudyAdvice } from "@/lib/openai/generateStudyAdvice";
+import { toErrorResponse } from "@/lib/apiErrorHandler";
+
+export async function GET() {
+  try {
+    const userId = getFixedUserId();
+    const currentExam = await getCurrentUserExam(userId);
+    if (!currentExam) {
+      return NextResponse.json(
+        { error: "学習対象の試験が未設定です。先に試験を選択してください。" },
+        { status: 400 }
+      );
+    }
+    const examType = currentExam.exam_id;
+
+    const [answerHistory, mistakeAnalyses, allQuestions] = await Promise.all([
+      getAnswerHistoryByUser(userId),
+      getMistakeAnalysesByUser(userId),
+      getAllQuestions(),
+    ]);
+
+    // 試験ごとにデータを分けて集計する(複数試験を扱えるようにするための仕組み)
+    const questions = allQuestions.filter((q) => q.exam_type === examType);
+    const examQuestionIds = new Set(questions.map((q) => q.question_id));
+    const scopedAnswerHistory = answerHistory.filter((a) =>
+      examQuestionIds.has(a.question_id)
+    );
+    const scopedMistakeAnalyses = mistakeAnalyses.filter((a) =>
+      examQuestionIds.has(a.question_id)
+    );
+
+    const stats = computeWeakPointStats(
+      scopedAnswerHistory,
+      scopedMistakeAnalyses,
+      questions
+    );
+
+    let advice: string | null = null;
+    let adviceError: string | null = null;
+
+    if (stats.totalAnswers > 0) {
+      try {
+        const examLabel = await getExamLabel(examType);
+        const result = await generateStudyAdvice(stats, examLabel);
+        advice = result.advice;
+      } catch (error) {
+        console.error("generateStudyAdvice failed:", error);
+        adviceError =
+          error instanceof Error
+            ? error.message
+            : "学習アドバイスの生成でエラーが発生しました";
+      }
+    }
+
+    return NextResponse.json({ stats, advice, adviceError });
+  } catch (error) {
+    return toErrorResponse(error);
+  }
+}
