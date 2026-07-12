@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "資格学習AI",
+  title: "New Study",
   description: "各種資格試験の過去問演習とAIによる類題生成・弱点分析サービス",
 };
 

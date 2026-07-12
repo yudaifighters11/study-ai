@@ -1,7 +1,7 @@
 import Image from "next/image";
 
 /**
- * 全画面共通のヘッダー。左上にStudyAIロゴ(アイコン+文字)を表示する。
+ * 全画面共通のヘッダー。左上にNew Studyロゴ(アイコン+文字)を表示する。
  * titleは画面名(スクリーンリーダー向けの見出しとしてのみ使用し、画面には表示しない。
  * 現在の画面は下部のタブバーの選択状態で分かるため)。
  */
@@ -11,9 +11,9 @@ export function AppHeader({ title }: { title: string }) {
       <h1 className="sr-only">{title}</h1>
       <Image
         src="/logo-full.png"
-        alt="StudyAI"
-        width={1285}
-        height={350}
+        alt="New Study"
+        width={1220}
+        height={335}
         priority
         className="h-7 w-auto"
       />

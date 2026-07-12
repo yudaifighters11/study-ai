@@ -28,7 +28,7 @@ export default function TermsPage() {
             <section>
               <h2 className="mb-1 font-semibold text-gray-900">1. サービス内容</h2>
               <p>
-                本サービス(StudyAI)は、資格試験の過去問演習と、AIによる誤答傾向分析・類題生成を行う学習支援サービスです。
+                本サービス(New Study)は、資格試験の過去問演習と、AIによる誤答傾向分析・類題生成を行う学習支援サービスです。
               </p>
             </section>
 
