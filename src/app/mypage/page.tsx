@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { getExamTheme } from "@/components/examTheme";
 import { AppHeader } from "@/components/AppHeader";
 import { getAuthBrowserClient } from "@/lib/supabase/authBrowserClient";
 import { RegisteredExam } from "@/lib/examPresenter";
 
 /**
- * マイページ画面。プロフィール(表示名・ログアウト)、通知・リマインドの復習/学習トグル、
- * 学習目標(今月の目標時間・週間学習日数・受験予定)は実データ・実機能。
+ * マイページ画面。プロフィール(表示名・ログアウト)、学習目標(今月の目標時間・週間学習日数・受験予定)は実データ・実機能。
+ * 復習・学習リマインドの詳細設定は /mypage/reminders に分離。
  * それ以外(学習中の試験・お知らせ・設定)は仮の値で、
  * 実際の学習データや設定とは連動していない(見た目の骨組みのみのプレースホルダー実装)。
  */
@@ -69,15 +70,6 @@ function FlagIcon(props: { className?: string }) {
     <IconWrapper {...props}>
       <path d="M6 20V4" />
       <path d="M6 5h11l-2.5 3.5L17 12H6" />
-    </IconWrapper>
-  );
-}
-
-function RefreshIcon(props: { className?: string }) {
-  return (
-    <IconWrapper {...props}>
-      <path d="M4 10a8 8 0 0 1 14-4.9M20 14a8 8 0 0 1-14 4.9" />
-      <path d="M18 3v4h-4M6 21v-4h4" />
     </IconWrapper>
   );
 }
@@ -202,17 +194,12 @@ const SETTINGS_ROWS = [
 interface CurrentUser {
   display_name: string;
   email: string | null;
-  review_reminder_enabled: boolean;
-  study_reminder_enabled: boolean;
 }
 
 export default function MyPage() {
   const router = useRouter();
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
-  const [savingSetting, setSavingSetting] = useState<
-    "review" | "study" | null
-  >(null);
   const [currentExam, setCurrentExam] = useState<RegisteredExam | null>(null);
   const [monthlyStudyHours, setMonthlyStudyHours] = useState<number | null>(null);
   const [studyDaysThisWeek, setStudyDaysThisWeek] = useState<number | null>(null);
@@ -274,34 +261,6 @@ export default function MyPage() {
       // 失敗した場合は編集状態のまま残し、再入力できるようにする
     } finally {
       setSavingGoal(false);
-    }
-  };
-
-  const handleToggleReminder = async (
-    key: "review" | "study",
-    nextValue: boolean
-  ) => {
-    if (!user) return;
-    setSavingSetting(key);
-    const field =
-      key === "review" ? "review_reminder_enabled" : "study_reminder_enabled";
-    const prev = user[field];
-    setUser({ ...user, [field]: nextValue });
-    try {
-      const res = await fetch("/api/user/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          key === "review"
-            ? { reviewReminderEnabled: nextValue }
-            : { studyReminderEnabled: nextValue }
-        ),
-      });
-      if (!res.ok) throw new Error("failed");
-    } catch {
-      setUser((current) => (current ? { ...current, [field]: prev } : current));
-    } finally {
-      setSavingSetting(null);
     }
   };
 
@@ -438,57 +397,28 @@ export default function MyPage() {
             </div>
           </Card>
 
-          {/* 通知・リマインド(復習・学習リマインドは実データ・実機能。お知らせは今回のスコープ外のため仮の値・操作不可) */}
+          {/* 通知(リマインドは/mypage/remindersで詳細設定。お知らせは今回のスコープ外のため仮の値・操作不可) */}
           <Card>
-            <CardTitle>通知・リマインド</CardTitle>
+            <CardTitle>通知</CardTitle>
             <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200">
-                  <RefreshIcon className="h-4 w-4 text-gray-500" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-gray-900">
-                    復習リマインド
-                  </p>
-                  <p className="text-[11px] text-gray-500">
-                    不正解のまま解き直していない問題をホーム画面でお知らせします
-                  </p>
-                </div>
-                <ToggleSwitch
-                  checked={user?.review_reminder_enabled ?? true}
-                  disabled={!user || savingSetting === "review"}
-                  onChange={() =>
-                    void handleToggleReminder(
-                      "review",
-                      !(user?.review_reminder_enabled ?? true)
-                    )
-                  }
-                />
-              </div>
-              <div className="flex items-center gap-3">
+              <Link
+                href="/mypage/reminders"
+                className="flex items-center gap-3"
+              >
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200">
                   <BellIcon className="h-4 w-4 text-gray-500" />
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-gray-900">
-                    学習リマインド
+                    リマインド
                   </p>
                   <p className="text-[11px] text-gray-500">
-                    学習が滞っている、または受験日が近いことをホーム画面でお知らせします
+                    復習リマインド・学習リマインドの表示条件を設定します
                   </p>
                 </div>
-                <ToggleSwitch
-                  checked={user?.study_reminder_enabled ?? true}
-                  disabled={!user || savingSetting === "study"}
-                  onChange={() =>
-                    void handleToggleReminder(
-                      "study",
-                      !(user?.study_reminder_enabled ?? true)
-                    )
-                  }
-                />
-              </div>
-              <div className="flex items-center gap-3">
+                <ChevronRightIcon className="h-4 w-4 text-gray-300" />
+              </Link>
+              <div className="flex items-center gap-3 border-t border-gray-100 pt-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200">
                   <MegaphoneIcon className="h-4 w-4 text-gray-500" />
                 </div>

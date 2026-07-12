@@ -26,6 +26,9 @@ create table users (
   terms_agreed_at timestamptz,
   review_reminder_enabled boolean not null default true,
   study_reminder_enabled boolean not null default true,
+  review_reminder_threshold_days integer not null default 3,
+  study_inactivity_threshold_days integer not null default 3,
+  exam_proximity_threshold_days integer not null default 7,
   created_at timestamptz not null default now()
 );
 

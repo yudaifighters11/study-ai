@@ -3,14 +3,8 @@ import { AnswerHistory } from "@/types/answerHistory";
 
 /**
  * ホーム画面のリマインドバナー用の集計処理(AIを使わない通常の集計処理)。
+ * 各しきい値(日数)はマイページの「通知・リマインド」でユーザーごとに設定できる。
  */
-
-// 不正解のまま何日経過したら「復習が必要」とみなすか
-const REVIEW_UNRESOLVED_DAYS = 3;
-// 最終学習日から何日経過したら「学習リマインド」を出すか
-const STUDY_INACTIVITY_DAYS = 3;
-// 受験予定日まで何日以内なら「学習リマインド」を出すか
-const EXAM_PROXIMITY_DAYS = 7;
 
 export interface HomeReminders {
   // 不正解のまま一定期間解き直していない問題の数
@@ -32,6 +26,12 @@ export function computeHomeReminders(params: {
   // マイページの「通知・リマインド」トグル。falseの場合はそのリマインドを常に非表示にする。
   reviewReminderEnabled: boolean;
   studyReminderEnabled: boolean;
+  // 不正解のまま何日経過したら「復習が必要」とみなすか
+  reviewReminderThresholdDays: number;
+  // 最終学習日から何日経過したら「学習リマインド」を出すか
+  studyInactivityThresholdDays: number;
+  // 受験予定日まで何日以内なら「学習リマインド」を出すか
+  examProximityThresholdDays: number;
   now?: Date;
 }): HomeReminders {
   const now = params.now ?? new Date();
@@ -49,7 +49,10 @@ export function computeHomeReminders(params: {
 
     for (const answer of latestByQuestion.values()) {
       if (answer.is_correct) continue;
-      if (differenceInCalendarDays(now, new Date(answer.answered_at)) >= REVIEW_UNRESOLVED_DAYS) {
+      if (
+        differenceInCalendarDays(now, new Date(answer.answered_at)) >=
+        params.reviewReminderThresholdDays
+      ) {
         reviewNeededCount += 1;
       }
     }
@@ -66,8 +69,9 @@ export function computeHomeReminders(params: {
 
   const showStudyReminder =
     params.studyReminderEnabled &&
-    ((daysSinceLastStudy !== null && daysSinceLastStudy >= STUDY_INACTIVITY_DAYS) ||
-      (daysUntilExam !== null && daysUntilExam <= EXAM_PROXIMITY_DAYS));
+    ((daysSinceLastStudy !== null &&
+      daysSinceLastStudy >= params.studyInactivityThresholdDays) ||
+      (daysUntilExam !== null && daysUntilExam <= params.examProximityThresholdDays));
 
   return { reviewNeededCount, daysSinceLastStudy, daysUntilExam, showStudyReminder };
 }

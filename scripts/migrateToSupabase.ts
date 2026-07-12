@@ -81,6 +81,9 @@ async function main() {
       terms_agreed_at: null,
       review_reminder_enabled: true,
       study_reminder_enabled: true,
+      review_reminder_threshold_days: 3,
+      study_inactivity_threshold_days: 3,
+      exam_proximity_threshold_days: 7,
       created_at: row.created_at,
     })
   );

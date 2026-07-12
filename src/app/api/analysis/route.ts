@@ -56,6 +56,9 @@ export async function GET() {
       plannedExamDate: currentExam.planned_exam_date,
       reviewReminderEnabled: user?.review_reminder_enabled ?? true,
       studyReminderEnabled: user?.study_reminder_enabled ?? true,
+      reviewReminderThresholdDays: user?.review_reminder_threshold_days ?? 3,
+      studyInactivityThresholdDays: user?.study_inactivity_threshold_days ?? 3,
+      examProximityThresholdDays: user?.exam_proximity_threshold_days ?? 7,
     });
 
     const monthlyStudyHours = computeMonthlyStudyHours(scopedAnswerHistory);

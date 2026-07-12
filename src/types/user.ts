@@ -30,6 +30,12 @@ export const UserSchema = z.object({
   // マイページの「通知・リマインド」トグルに対応。ホーム画面のバナー表示可否を切り替える。
   review_reminder_enabled: z.boolean(),
   study_reminder_enabled: z.boolean(),
+  // 復習リマインド: 不正解のまま何日経過したら「復習が必要」とみなすか
+  review_reminder_threshold_days: z.number().int().min(1),
+  // 学習リマインド: 最終学習日から何日経過したら表示するか
+  study_inactivity_threshold_days: z.number().int().min(1),
+  // 学習リマインド: 受験予定日まで何日以内なら表示するか
+  exam_proximity_threshold_days: z.number().int().min(1),
   created_at: z.string(), // ISO日時
 });
 

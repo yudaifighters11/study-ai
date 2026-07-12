@@ -22,11 +22,20 @@ export async function ensureUserProfile(user: User): Promise<void> {
 }
 
 /**
- * マイページの「通知・リマインド」トグルの更新。
+ * マイページの「通知・リマインド」設定(ON/OFFと日数しきい値)の更新。
  */
 export async function updateReminderSettings(
   userId: string,
-  settings: Partial<Pick<User, "review_reminder_enabled" | "study_reminder_enabled">>
+  settings: Partial<
+    Pick<
+      User,
+      | "review_reminder_enabled"
+      | "study_reminder_enabled"
+      | "review_reminder_threshold_days"
+      | "study_inactivity_threshold_days"
+      | "exam_proximity_threshold_days"
+    >
+  >
 ): Promise<User> {
   const { data, error } = await getSupabaseClient()
     .from("users")
