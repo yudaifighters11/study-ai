@@ -20,3 +20,20 @@ export async function ensureUserProfile(user: User): Promise<void> {
   const { error } = await getSupabaseClient().from("users").insert(user);
   if (error) throw new Error(`ensureUserProfile failed: ${error.message}`);
 }
+
+/**
+ * マイページの「通知・リマインド」トグルの更新。
+ */
+export async function updateReminderSettings(
+  userId: string,
+  settings: Partial<Pick<User, "review_reminder_enabled" | "study_reminder_enabled">>
+): Promise<User> {
+  const { data, error } = await getSupabaseClient()
+    .from("users")
+    .update(settings)
+    .eq("user_id", userId)
+    .select()
+    .single();
+  if (error) throw new Error(`updateReminderSettings failed: ${error.message}`);
+  return UserSchema.parse(data);
+}

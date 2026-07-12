@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAuthenticatedUserId } from "@/lib/supabase/authServerClient";
 import { getExamLabel } from "@/lib/csv/examRepository";
 import { getCurrentUserExam } from "@/lib/csv/userExamRepository";
+import { getUserById } from "@/lib/csv/userRepository";
 import { getAnswerHistoryByUser } from "@/lib/csv/answerHistoryRepository";
 import { getMistakeAnalysesByUser } from "@/lib/csv/mistakeAnalysisRepository";
 import { getQuestionsForFiltering } from "@/lib/csv/questionRepository";
@@ -25,10 +26,11 @@ export async function GET() {
     }
     const examType = currentExam.exam_id;
 
-    const [answerHistory, mistakeAnalyses, questions] = await Promise.all([
+    const [answerHistory, mistakeAnalyses, questions, user] = await Promise.all([
       getAnswerHistoryByUser(userId),
       getMistakeAnalysesByUser(userId),
       getQuestionsForFiltering(examType),
+      getUserById(userId),
     ]);
 
     // 試験ごとにデータを分けて集計する(複数試験を扱えるようにするための仕組み)
@@ -50,6 +52,8 @@ export async function GET() {
       answerHistory: scopedAnswerHistory,
       lastStudiedAt: currentExam.last_studied_at,
       plannedExamDate: currentExam.planned_exam_date,
+      reviewReminderEnabled: user?.review_reminder_enabled ?? true,
+      studyReminderEnabled: user?.study_reminder_enabled ?? true,
     });
 
     let advice: string | null = null;

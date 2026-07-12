@@ -27,6 +27,9 @@ export const UserSchema = z.object({
   age_group: AgeGroupSchema.nullable(),
   occupation: OccupationSchema.nullable(),
   terms_agreed_at: z.string().nullable(), // ISO日時
+  // マイページの「通知・リマインド」トグルに対応。ホーム画面のバナー表示可否を切り替える。
+  review_reminder_enabled: z.boolean(),
+  study_reminder_enabled: z.boolean(),
   created_at: z.string(), // ISO日時
 });
 

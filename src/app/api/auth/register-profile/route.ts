@@ -53,6 +53,8 @@ export async function POST(request: NextRequest) {
       age_group: parsed.data.ageGroup,
       occupation: parsed.data.occupation,
       terms_agreed_at: new Date().toISOString(),
+      review_reminder_enabled: true,
+      study_reminder_enabled: true,
       created_at: new Date().toISOString(),
     });
 

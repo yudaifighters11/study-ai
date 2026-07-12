@@ -7,8 +7,8 @@ import { AppHeader } from "@/components/AppHeader";
 import { getAuthBrowserClient } from "@/lib/supabase/authBrowserClient";
 
 /**
- * マイページ画面。プロフィール(表示名・ログアウト)は実データ・実機能。
- * それ以外(学習中の試験・学習目標・通知設定・設定)は仮の値で、
+ * マイページ画面。プロフィール(表示名・ログアウト)、通知・リマインドの復習/学習トグルは実データ・実機能。
+ * それ以外(学習中の試験・学習目標・お知らせ・設定)は仮の値で、
  * 実際の学習データや設定とは連動していない(見た目の骨組みのみのプレースホルダー実装)。
  */
 
@@ -143,19 +143,32 @@ function InfoIcon(props: { className?: string }) {
   );
 }
 
-function ToggleSwitch({ checked }: { checked: boolean }) {
+function ToggleSwitch({
+  checked,
+  onChange,
+  disabled,
+}: {
+  checked: boolean;
+  onChange?: () => void;
+  disabled?: boolean;
+}) {
   return (
-    <span
-      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full ${
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={!onChange || disabled}
+      onClick={onChange}
+      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
         checked ? "bg-blue-600" : "bg-gray-300"
       }`}
     >
       <span
-        className={`inline-block h-5 w-5 translate-x-0.5 rounded-full bg-white shadow ${
+        className={`inline-block h-5 w-5 translate-x-0.5 rounded-full bg-white shadow transition-transform ${
           checked ? "translate-x-5" : "translate-x-0.5"
         }`}
       />
-    </span>
+    </button>
   );
 }
 
@@ -187,12 +200,17 @@ const SETTINGS_ROWS = [
 interface CurrentUser {
   display_name: string;
   email: string | null;
+  review_reminder_enabled: boolean;
+  study_reminder_enabled: boolean;
 }
 
 export default function MyPage() {
   const router = useRouter();
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [savingSetting, setSavingSetting] = useState<
+    "review" | "study" | null
+  >(null);
 
   useEffect(() => {
     const load = async () => {
@@ -202,6 +220,34 @@ export default function MyPage() {
     };
     void load();
   }, []);
+
+  const handleToggleReminder = async (
+    key: "review" | "study",
+    nextValue: boolean
+  ) => {
+    if (!user) return;
+    setSavingSetting(key);
+    const field =
+      key === "review" ? "review_reminder_enabled" : "study_reminder_enabled";
+    const prev = user[field];
+    setUser({ ...user, [field]: nextValue });
+    try {
+      const res = await fetch("/api/user/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          key === "review"
+            ? { reviewReminderEnabled: nextValue }
+            : { studyReminderEnabled: nextValue }
+        ),
+      });
+      if (!res.ok) throw new Error("failed");
+    } catch {
+      setUser((current) => (current ? { ...current, [field]: prev } : current));
+    } finally {
+      setSavingSetting(null);
+    }
+  };
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -294,7 +340,7 @@ export default function MyPage() {
             </div>
           </Card>
 
-          {/* 通知・リマインド(仮の値、操作不可) */}
+          {/* 通知・リマインド(復習・学習リマインドは実データ・実機能。お知らせは今回のスコープ外のため仮の値・操作不可) */}
           <Card>
             <CardTitle>通知・リマインド</CardTitle>
             <div className="flex flex-col gap-3">
@@ -307,10 +353,19 @@ export default function MyPage() {
                     復習リマインド
                   </p>
                   <p className="text-[11px] text-gray-500">
-                    忘却曲線に基づいてお知らせします
+                    不正解のまま解き直していない問題をホーム画面でお知らせします
                   </p>
                 </div>
-                <ToggleSwitch checked />
+                <ToggleSwitch
+                  checked={user?.review_reminder_enabled ?? true}
+                  disabled={!user || savingSetting === "review"}
+                  onChange={() =>
+                    void handleToggleReminder(
+                      "review",
+                      !(user?.review_reminder_enabled ?? true)
+                    )
+                  }
+                />
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200">
@@ -321,10 +376,19 @@ export default function MyPage() {
                     学習リマインド
                   </p>
                   <p className="text-[11px] text-gray-500">
-                    毎日の学習をサポートします
+                    学習が滞っている、または受験日が近いことをホーム画面でお知らせします
                   </p>
                 </div>
-                <ToggleSwitch checked />
+                <ToggleSwitch
+                  checked={user?.study_reminder_enabled ?? true}
+                  disabled={!user || savingSetting === "study"}
+                  onChange={() =>
+                    void handleToggleReminder(
+                      "study",
+                      !(user?.study_reminder_enabled ?? true)
+                    )
+                  }
+                />
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200">
@@ -333,7 +397,7 @@ export default function MyPage() {
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-gray-900">お知らせ</p>
                   <p className="text-[11px] text-gray-500">
-                    キャンペーンや新機能をお知らせします
+                    キャンペーンや新機能をお知らせします(準備中)
                   </p>
                 </div>
                 <ToggleSwitch checked={false} />

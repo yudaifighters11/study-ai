@@ -24,6 +24,8 @@ create table users (
   age_group text check (age_group in ('10s', '20s', '30s', '40s', '50s_plus')),
   occupation text check (occupation in ('junior_high', 'high_school', 'university', 'working_adult', 'other')),
   terms_agreed_at timestamptz,
+  review_reminder_enabled boolean not null default true,
+  study_reminder_enabled boolean not null default true,
   created_at timestamptz not null default now()
 );
 

@@ -79,6 +79,8 @@ async function main() {
       age_group: null,
       occupation: null,
       terms_agreed_at: null,
+      review_reminder_enabled: true,
+      study_reminder_enabled: true,
       created_at: row.created_at,
     })
   );

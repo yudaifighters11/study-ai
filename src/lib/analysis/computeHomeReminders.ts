@@ -29,24 +29,29 @@ export function computeHomeReminders(params: {
   answerHistory: ReminderAnswer[];
   lastStudiedAt: string | null;
   plannedExamDate: string | null;
+  // マイページの「通知・リマインド」トグル。falseの場合はそのリマインドを常に非表示にする。
+  reviewReminderEnabled: boolean;
+  studyReminderEnabled: boolean;
   now?: Date;
 }): HomeReminders {
   const now = params.now ?? new Date();
 
-  // 問題ごとに最新の回答のみを見る(後で解き直して正解していれば復習不要とみなす)
-  const latestByQuestion = new Map<string, ReminderAnswer>();
-  for (const answer of params.answerHistory) {
-    const existing = latestByQuestion.get(answer.question_id);
-    if (!existing || answer.answered_at > existing.answered_at) {
-      latestByQuestion.set(answer.question_id, answer);
-    }
-  }
-
   let reviewNeededCount = 0;
-  for (const answer of latestByQuestion.values()) {
-    if (answer.is_correct) continue;
-    if (differenceInCalendarDays(now, new Date(answer.answered_at)) >= REVIEW_UNRESOLVED_DAYS) {
-      reviewNeededCount += 1;
+  if (params.reviewReminderEnabled) {
+    // 問題ごとに最新の回答のみを見る(後で解き直して正解していれば復習不要とみなす)
+    const latestByQuestion = new Map<string, ReminderAnswer>();
+    for (const answer of params.answerHistory) {
+      const existing = latestByQuestion.get(answer.question_id);
+      if (!existing || answer.answered_at > existing.answered_at) {
+        latestByQuestion.set(answer.question_id, answer);
+      }
+    }
+
+    for (const answer of latestByQuestion.values()) {
+      if (answer.is_correct) continue;
+      if (differenceInCalendarDays(now, new Date(answer.answered_at)) >= REVIEW_UNRESOLVED_DAYS) {
+        reviewNeededCount += 1;
+      }
     }
   }
 
@@ -60,8 +65,9 @@ export function computeHomeReminders(params: {
   const daysUntilExam = daysUntilExamRaw !== null && daysUntilExamRaw >= 0 ? daysUntilExamRaw : null;
 
   const showStudyReminder =
-    (daysSinceLastStudy !== null && daysSinceLastStudy >= STUDY_INACTIVITY_DAYS) ||
-    (daysUntilExam !== null && daysUntilExam <= EXAM_PROXIMITY_DAYS);
+    params.studyReminderEnabled &&
+    ((daysSinceLastStudy !== null && daysSinceLastStudy >= STUDY_INACTIVITY_DAYS) ||
+      (daysUntilExam !== null && daysUntilExam <= EXAM_PROXIMITY_DAYS));
 
   return { reviewNeededCount, daysSinceLastStudy, daysUntilExam, showStudyReminder };
 }
