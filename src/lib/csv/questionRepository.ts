@@ -2,11 +2,17 @@ import { getSupabaseClient } from "@/lib/supabase/supabaseClient";
 import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
 import { Question, QuestionSchema } from "@/types/question";
 
-export async function getAllQuestions(): Promise<Question[]> {
+/**
+ * examTypeを指定すると、その試験の問題だけを取得する(呼び出し元が対象試験を分かっている場合は
+ * 必ず指定すること。指定しないと全試験分を取得してしまい、通信量・応答時間が増える)。
+ */
+export async function getAllQuestions(examType?: string): Promise<Question[]> {
   const supabase = getSupabaseClient();
-  const rows = await fetchAllRows<Record<string, unknown>>(([from, to]) =>
-    supabase.from("questions").select("*").range(from, to)
-  );
+  const rows = await fetchAllRows<Record<string, unknown>>(([from, to]) => {
+    let query = supabase.from("questions").select("*");
+    if (examType) query = query.eq("exam_type", examType);
+    return query.range(from, to);
+  });
   return rows.map((row) => QuestionSchema.parse(row));
 }
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getFixedUserId } from "@/lib/config";
 import { getCurrentUserExam } from "@/lib/csv/userExamRepository";
-import { getAllQuestions } from "@/lib/csv/questionRepository";
+import { getAllQuestions, getQuestionById } from "@/lib/csv/questionRepository";
 import { getExamById } from "@/lib/csv/examRepository";
 import { getAllSyllabusVersions } from "@/lib/csv/syllabusRepository";
 import { filterHistoricalQuestions, filterValidQuestions } from "@/lib/syllabus/filterValidQuestions";
@@ -47,12 +47,11 @@ export async function GET(request: NextRequest) {
       ? currentExam.target_syllabus_version
       : null;
 
-    const allQuestions = await getAllQuestions();
-
     // 間違えた問題の解き直し: question_idを直接指定された場合は、有効性フィルタを介さずその問題をそのまま返す。
+    // (現在の試験に絞り込む前に、IDだけでピンポイントに取得する)
     const questionId = request.nextUrl.searchParams.get("questionId");
     if (questionId) {
-      const question = allQuestions.find((q) => q.question_id === questionId);
+      const question = await getQuestionById(questionId);
       if (!question) {
         return NextResponse.json(
           { error: "指定された問題が見つかりません" },
@@ -61,6 +60,9 @@ export async function GET(request: NextRequest) {
       }
       return NextResponse.json({ question: toPublicQuestion(question) });
     }
+
+    // 現在の試験の問題だけを取得する(全試験分を取得すると通信量・応答時間が無駄に増えるため)
+    const allQuestions = await getAllQuestions(examType);
 
     // 「過去の問題を見る」モード: 現行の出題対象ではない問題(旧シラバス・出題対象外等)を出題する
     const mode = request.nextUrl.searchParams.get("mode");

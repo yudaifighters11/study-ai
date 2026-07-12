@@ -44,7 +44,7 @@ export async function GET() {
 
     const [answerHistory, allQuestions, mistakeAnalyses] = await Promise.all([
       getAnswerHistoryByUser(userId),
-      getAllQuestions(),
+      getAllQuestions(currentExam.exam_id),
       getMistakeAnalysesByUser(userId),
     ]);
 

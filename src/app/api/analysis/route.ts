@@ -21,14 +21,13 @@ export async function GET() {
     }
     const examType = currentExam.exam_id;
 
-    const [answerHistory, mistakeAnalyses, allQuestions] = await Promise.all([
+    const [answerHistory, mistakeAnalyses, questions] = await Promise.all([
       getAnswerHistoryByUser(userId),
       getMistakeAnalysesByUser(userId),
-      getAllQuestions(),
+      getAllQuestions(examType),
     ]);
 
     // 試験ごとにデータを分けて集計する(複数試験を扱えるようにするための仕組み)
-    const questions = allQuestions.filter((q) => q.exam_type === examType);
     const examQuestionIds = new Set(questions.map((q) => q.question_id));
     const scopedAnswerHistory = answerHistory.filter((a) =>
       examQuestionIds.has(a.question_id)

@@ -120,7 +120,7 @@ async function handlePost(request: NextRequest) {
   };
 
   // 同じ元問題からこれまでに生成した類題(重複した切り口を避けるため、新規生成時のプロンプトに使う)
-  const allQuestions = await getAllQuestions();
+  const allQuestions = await getAllQuestions(originalQuestion.exam_type);
   const existingVariants = allQuestions.filter(
     (q) =>
       q.question_type === "ai_generated" &&
