@@ -170,9 +170,9 @@ export default function StudyMenuPage() {
                   <path d="M4 20l4-1 11-11-3-3L5 16l-1 4Z" />
                 </MenuIcon>
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">過去問を解く</p>
+                  <p className="text-sm font-semibold text-gray-900">問題を解く</p>
                   <p className="mt-0.5 text-xs text-gray-500">
-                    対象シラバスで有効な過去問に取り組みます。
+                    対象シラバスで有効な過去問を中心に取り組みます。間違えた問題はAIが類題を生成することもあります。
                   </p>
                 </div>
               </div>
