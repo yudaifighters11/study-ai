@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getFixedUserId } from "@/lib/config";
+import { getAuthenticatedUserId } from "@/lib/supabase/authServerClient";
 import { getAllExams } from "@/lib/csv/examRepository";
 import { getUserExams, registerAndSelectExam } from "@/lib/csv/userExamRepository";
 import { getAllSyllabusVersions } from "@/lib/csv/syllabusRepository";
@@ -13,7 +13,10 @@ const SelectExamSchema = z.object({
 
 export async function GET() {
   try {
-    const userId = getFixedUserId();
+    const userId = await getAuthenticatedUserId();
+    if (!userId) {
+      return NextResponse.json({ error: "ログインが必要です" }, { status: 401 });
+    }
     const [userExams, exams, syllabusVersions] = await Promise.all([
       getUserExams(userId),
       getAllExams(),
@@ -65,7 +68,10 @@ async function handlePost(request: NextRequest) {
     );
   }
 
-  const userId = getFixedUserId();
+  const userId = await getAuthenticatedUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "ログインが必要です" }, { status: 401 });
+  }
   const userExam = await registerAndSelectExam(userId, parsed.data.examId);
 
   const syllabusVersions = await getAllSyllabusVersions();

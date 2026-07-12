@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getFixedUserId } from "@/lib/config";
+import { getAuthenticatedUserId } from "@/lib/supabase/authServerClient";
 import { getUserById } from "@/lib/csv/userRepository";
 import {
   getCurrentUserExam,
@@ -18,7 +18,10 @@ const SetPlannedExamDateSchema = z.object({
 
 export async function GET() {
   try {
-    const userId = getFixedUserId();
+    const userId = await getAuthenticatedUserId();
+    if (!userId) {
+      return NextResponse.json({ error: "ログインが必要です" }, { status: 401 });
+    }
     const user = await getUserById(userId);
     if (!user) {
       return NextResponse.json(
@@ -50,7 +53,10 @@ async function handlePost(request: NextRequest) {
     );
   }
 
-  const userId = getFixedUserId();
+  const userId = await getAuthenticatedUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "ログインが必要です" }, { status: 401 });
+  }
   const currentExam = await getCurrentUserExam(userId);
   if (!currentExam) {
     return NextResponse.json(

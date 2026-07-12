@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
-import { getFixedUserId } from "@/lib/config";
+import { getAuthenticatedUserId } from "@/lib/supabase/authServerClient";
 import { CHOICE_KEYS, CONFIDENCE_LEVELS } from "@/types/enums";
 import { getQuestionById } from "@/lib/csv/questionRepository";
 import {
@@ -61,7 +61,10 @@ async function handlePost(request: NextRequest) {
     );
   }
 
-  const userId = getFixedUserId();
+  const userId = await getAuthenticatedUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "ログインが必要です" }, { status: 401 });
+  }
   const now = new Date().toISOString();
 
   // 正誤判定は通常のプログラムで行う(セクション5、AIには行わせない)

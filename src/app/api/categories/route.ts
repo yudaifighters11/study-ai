@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getFixedUserId } from "@/lib/config";
+import { getAuthenticatedUserId } from "@/lib/supabase/authServerClient";
 import { getCurrentUserExam } from "@/lib/csv/userExamRepository";
 import { getCategoryMastersByExam } from "@/lib/csv/categoryMasterRepository";
 import { toErrorResponse } from "@/lib/apiErrorHandler";
@@ -24,7 +24,10 @@ export interface CategoryMajorOption {
  */
 export async function GET() {
   try {
-    const userId = getFixedUserId();
+    const userId = await getAuthenticatedUserId();
+    if (!userId) {
+      return NextResponse.json({ error: "ログインが必要です" }, { status: 401 });
+    }
     const currentExam = await getCurrentUserExam(userId);
     if (!currentExam) {
       return NextResponse.json(

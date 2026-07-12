@@ -24,6 +24,7 @@ import { Question } from "@/types/question";
 import { MistakeAnalysisResponse } from "@/types/openai";
 import { ChoiceKey } from "@/types/enums";
 import { toErrorResponse } from "@/lib/apiErrorHandler";
+import { getAuthenticatedUserId } from "@/lib/supabase/authServerClient";
 
 const RequestSchema = z.object({
   answerId: z.string().min(1),
@@ -52,8 +53,13 @@ async function handlePost(request: NextRequest) {
 
   const { answerId } = parsed.data;
 
+  const userId = await getAuthenticatedUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "ログインが必要です" }, { status: 401 });
+  }
+
   const answer = await getAnswerHistoryById(answerId);
-  if (!answer) {
+  if (!answer || answer.user_id !== userId) {
     return NextResponse.json(
       { error: "回答履歴が見つかりません" },
       { status: 404 }

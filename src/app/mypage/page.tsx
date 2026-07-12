@@ -1,9 +1,15 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getExamTheme } from "@/components/examTheme";
 import { AppHeader } from "@/components/AppHeader";
+import { getAuthBrowserClient } from "@/lib/supabase/authBrowserClient";
 
 /**
- * マイページ画面の枠組みのみ。表示内容はすべて仮の値で、実際のアカウント情報・
- * 通知設定・学習目標などとは連動していない(見た目の骨組みのみのプレースホルダー実装)。
+ * マイページ画面。プロフィール(表示名・ログアウト)は実データ・実機能。
+ * それ以外(学習中の試験・学習目標・通知設定・設定)は仮の値で、
+ * 実際の学習データや設定とは連動していない(見た目の骨組みのみのプレースホルダー実装)。
  */
 
 function IconWrapper({
@@ -33,14 +39,6 @@ function PersonIcon(props: { className?: string }) {
     <IconWrapper {...props}>
       <circle cx="12" cy="8" r="3.2" />
       <path d="M5 20c1.2-3.5 4-5 7-5s5.8 1.5 7 5" />
-    </IconWrapper>
-  );
-}
-
-function PencilIcon(props: { className?: string }) {
-  return (
-    <IconWrapper {...props}>
-      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
     </IconWrapper>
   );
 }
@@ -186,26 +184,58 @@ const SETTINGS_ROWS = [
   { icon: HelpIcon, label: "ヘルプ" },
 ];
 
+interface CurrentUser {
+  display_name: string;
+  email: string | null;
+}
+
 export default function MyPage() {
+  const router = useRouter();
+  const [user, setUser] = useState<CurrentUser | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      const res = await fetch("/api/user");
+      const data = await res.json();
+      if (res.ok) setUser(data.user);
+    };
+    void load();
+  }, []);
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    await getAuthBrowserClient().auth.signOut();
+    router.push("/login");
+    router.refresh();
+  };
+
   return (
     <div className="flex min-h-screen justify-center bg-gray-100">
       <div className="flex w-full max-w-[430px] md:max-w-2xl flex-col border-x border-gray-200 bg-gray-50">
         <AppHeader title="マイページ" />
 
         <main className="flex flex-col gap-4 p-4 md:p-6">
-          {/* プロフィール(仮の値) */}
+          {/* プロフィール(実データ) */}
           <Card>
             <div className="flex items-center gap-3">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-blue-100">
                 <PersonIcon className="h-7 w-7 text-blue-500" />
               </div>
               <div className="flex-1">
-                <p className="text-base font-bold text-gray-900">Hayatoさん</p>
-                <p className="text-xs text-gray-500">学習を継続中</p>
+                <p className="text-base font-bold text-gray-900">
+                  {user ? `${user.display_name}さん` : "読み込み中..."}
+                </p>
+                <p className="text-xs text-gray-500">{user?.email ?? ""}</p>
               </div>
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-200">
-                <PencilIcon className="h-4 w-4 text-gray-500" />
-              </div>
+              <button
+                type="button"
+                disabled={loggingOut}
+                onClick={() => void handleLogout()}
+                className="shrink-0 rounded-full border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 disabled:opacity-50"
+              >
+                {loggingOut ? "..." : "ログアウト"}
+              </button>
             </div>
           </Card>
 
