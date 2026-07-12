@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BackToHomeLink } from "@/components/BackToHomeLink";
 import { AppHeader } from "@/components/AppHeader";
+import { Chip } from "@/components/Chip";
 
 interface Exam {
   exam_id: string;
@@ -53,11 +54,6 @@ export default function ExamSelectPage() {
     };
     void load();
   }, []);
-
-  const registeredExamIds = useMemo(
-    () => new Set(registered.map((r) => r.exam_id)),
-    [registered]
-  );
 
   const categories = useMemo(() => {
     const map = new Map<string, Exam[]>();
@@ -118,15 +114,17 @@ export default function ExamSelectPage() {
                 <p className="text-xs font-semibold text-gray-500">
                   学習中の試験
                 </p>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-wrap gap-2">
                   {filteredRegistered.map((r) => (
-                    <ExamRow
+                    <Chip
                       key={r.exam_id}
-                      name={r.name}
-                      isCurrent={r.exam_id === currentExamId}
-                      isRegistered
-                      disabled={selectingExamId === r.exam_id}
-                      onSelect={() => void handleSelect(r.exam_id)}
+                      label={r.name}
+                      selected={r.exam_id === currentExamId}
+                      disabled={
+                        r.exam_id === currentExamId ||
+                        selectingExamId === r.exam_id
+                      }
+                      onClick={() => void handleSelect(r.exam_id)}
                     />
                   ))}
                 </div>
@@ -141,15 +139,17 @@ export default function ExamSelectPage() {
                   <p className="text-xs font-semibold text-gray-500">
                     {category}
                   </p>
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {filtered.map((exam) => (
-                      <ExamRow
+                      <Chip
                         key={exam.exam_id}
-                        name={exam.name}
-                        isCurrent={exam.exam_id === currentExamId}
-                        isRegistered={registeredExamIds.has(exam.exam_id)}
-                        disabled={selectingExamId === exam.exam_id}
-                        onSelect={() => void handleSelect(exam.exam_id)}
+                        label={exam.name}
+                        selected={exam.exam_id === currentExamId}
+                        disabled={
+                          exam.exam_id === currentExamId ||
+                          selectingExamId === exam.exam_id
+                        }
+                        onClick={() => void handleSelect(exam.exam_id)}
                       />
                     ))}
                   </div>
@@ -159,51 +159,6 @@ export default function ExamSelectPage() {
           </main>
         )}
       </div>
-    </div>
-  );
-}
-
-function ExamRow({
-  name,
-  isCurrent,
-  isRegistered,
-  disabled,
-  onSelect,
-}: {
-  name: string;
-  isCurrent: boolean;
-  isRegistered: boolean;
-  disabled: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <div
-      className={`flex items-center justify-between rounded-xl border px-4 py-3 ${
-        isCurrent
-          ? "border-blue-600 bg-blue-50"
-          : "border-gray-200 bg-white"
-      }`}
-    >
-      <div className="flex min-w-0 items-center gap-2">
-        <span className="truncate text-sm font-semibold text-gray-900">
-          {name}
-        </span>
-        {isCurrent && (
-          <span className="shrink-0 rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-semibold text-white">
-            選択中
-          </span>
-        )}
-      </div>
-      {!isCurrent && (
-        <button
-          type="button"
-          onClick={onSelect}
-          disabled={disabled}
-          className="shrink-0 rounded-full border border-blue-600 px-3 py-1 text-xs font-semibold text-blue-600 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isRegistered ? "選択する" : "追加する"}
-        </button>
-      )}
     </div>
   );
 }
