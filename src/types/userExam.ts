@@ -15,6 +15,8 @@ export const UserExamSchema = z.object({
   target_syllabus_version: z.string().nullable(),
   // 目標スコアまたは目標点。未設定(未定)の場合はnull。
   target_score: z.number().nullable(),
+  // マイページ「学習目標」の今月の目標学習時間(時間単位)。未設定の場合はnull。
+  monthly_study_goal_hours: z.number().nullable(),
   registered_at: z.string(), // ISO日時
   // この試験で最後に問題に回答した日時。未回答の場合はnull。「最近学習した試験」の判定に使う。
   last_studied_at: z.string().nullable(),

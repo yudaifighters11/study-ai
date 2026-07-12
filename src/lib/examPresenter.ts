@@ -15,6 +15,7 @@ export interface RegisteredExam {
   // falseの場合、target_syllabus_versionは常にnullのままでよく、受験予定日がなくても出題可能とする。
   has_syllabus: boolean;
   last_studied_at: string | null;
+  monthly_study_goal_hours: number | null;
 }
 
 export function toRegisteredExam(
@@ -31,5 +32,6 @@ export function toRegisteredExam(
     target_syllabus_version: userExam.target_syllabus_version,
     has_syllabus: hasSyllabus,
     last_studied_at: userExam.last_studied_at,
+    monthly_study_goal_hours: userExam.monthly_study_goal_hours,
   };
 }

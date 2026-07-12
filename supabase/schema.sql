@@ -39,6 +39,7 @@ create table user_exams (
   planned_exam_date date,
   target_syllabus_version text,
   target_score integer,
+  monthly_study_goal_hours integer,
   registered_at timestamptz not null default now(),
   last_studied_at timestamptz,
   primary key (user_id, exam_id)

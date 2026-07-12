@@ -7,6 +7,7 @@ import { getMistakeAnalysesByUser } from "@/lib/csv/mistakeAnalysisRepository";
 import { getQuestionsForFiltering } from "@/lib/csv/questionRepository";
 import { computeWeakPointStats } from "@/lib/analysis/computeWeakPointStats";
 import { computeHomeReminders } from "@/lib/analysis/computeHomeReminders";
+import { computeMonthlyStudyHours } from "@/lib/analysis/computeMonthlyStudyHours";
 import { toErrorResponse } from "@/lib/apiErrorHandler";
 
 /**
@@ -57,7 +58,9 @@ export async function GET() {
       studyReminderEnabled: user?.study_reminder_enabled ?? true,
     });
 
-    return NextResponse.json({ stats, reminders });
+    const monthlyStudyHours = computeMonthlyStudyHours(scopedAnswerHistory);
+
+    return NextResponse.json({ stats, reminders, monthlyStudyHours });
   } catch (error) {
     return toErrorResponse(error);
   }

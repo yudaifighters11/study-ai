@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { getExamTheme } from "@/components/examTheme";
 import { AppHeader } from "@/components/AppHeader";
 import { getAuthBrowserClient } from "@/lib/supabase/authBrowserClient";
+import { RegisteredExam } from "@/lib/examPresenter";
 
 /**
- * マイページ画面。プロフィール(表示名・ログアウト)、通知・リマインドの復習/学習トグルは実データ・実機能。
- * それ以外(学習中の試験・学習目標・お知らせ・設定)は仮の値で、
+ * マイページ画面。プロフィール(表示名・ログアウト)、通知・リマインドの復習/学習トグル、
+ * 学習目標(今月の目標時間・週間学習日数・受験予定)は実データ・実機能。
+ * それ以外(学習中の試験・お知らせ・設定)は仮の値で、
  * 実際の学習データや設定とは連動していない(見た目の骨組みのみのプレースホルダー実装)。
  */
 
@@ -211,6 +213,12 @@ export default function MyPage() {
   const [savingSetting, setSavingSetting] = useState<
     "review" | "study" | null
   >(null);
+  const [currentExam, setCurrentExam] = useState<RegisteredExam | null>(null);
+  const [monthlyStudyHours, setMonthlyStudyHours] = useState<number | null>(null);
+  const [studyDaysThisWeek, setStudyDaysThisWeek] = useState<number | null>(null);
+  const [isEditingGoal, setIsEditingGoal] = useState(false);
+  const [goalInput, setGoalInput] = useState("");
+  const [savingGoal, setSavingGoal] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -219,7 +227,55 @@ export default function MyPage() {
       if (res.ok) setUser(data.user);
     };
     void load();
+
+    const loadStudyGoalData = async () => {
+      try {
+        const [examRes, analysisRes] = await Promise.all([
+          fetch("/api/user/exams"),
+          fetch("/api/analysis"),
+        ]);
+        const examData = await examRes.json();
+        if (examRes.ok && examData.current) setCurrentExam(examData.current);
+
+        const analysisData = await analysisRes.json();
+        if (analysisRes.ok) {
+          setMonthlyStudyHours(analysisData.monthlyStudyHours);
+          const recentTrend = analysisData.stats?.recentTrend ?? [];
+          setStudyDaysThisWeek(
+            recentTrend.filter((d: { totalAnswers: number }) => d.totalAnswers > 0)
+              .length
+          );
+        }
+      } catch {
+        // 学習目標カードの表示専用データのため、失敗しても他の機能には影響しない
+      }
+    };
+    void loadStudyGoalData();
   }, []);
+
+  const handleSaveGoal = async () => {
+    setSavingGoal(true);
+    try {
+      const hours = goalInput.trim() ? Number(goalInput) : null;
+      const res = await fetch("/api/user/study-goal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ monthlyStudyGoalHours: hours }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "保存に失敗しました");
+      setCurrentExam((prev) =>
+        prev
+          ? { ...prev, monthly_study_goal_hours: data.userExam.monthly_study_goal_hours }
+          : prev
+      );
+      setIsEditingGoal(false);
+    } catch {
+      // 失敗した場合は編集状態のまま残し、再入力できるようにする
+    } finally {
+      setSavingGoal(false);
+    }
+  };
 
   const handleToggleReminder = async (
     key: "review" | "study",
@@ -305,7 +361,7 @@ export default function MyPage() {
             </div>
           </Card>
 
-          {/* 学習目標(仮の値) */}
+          {/* 学習目標(実データ・実機能。今月の目標時間は現在選択中の試験ごとに設定可能) */}
           <Card>
             <CardTitle>学習目標</CardTitle>
             <div className="grid grid-cols-3 gap-2 text-center">
@@ -315,9 +371,48 @@ export default function MyPage() {
                   今月の目標
                 </span>
                 <p className="text-lg font-bold text-gray-900">
-                  20<span className="text-xs font-medium text-gray-500">時間</span>
+                  {monthlyStudyHours !== null ? monthlyStudyHours.toFixed(1) : "…"}
+                  <span className="text-xs font-medium text-gray-500">時間</span>
                 </p>
-                <p className="text-[11px] text-gray-400">/ 30時間</p>
+                {!isEditingGoal ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGoalInput(
+                        currentExam?.monthly_study_goal_hours != null
+                          ? String(currentExam.monthly_study_goal_hours)
+                          : ""
+                      );
+                      setIsEditingGoal(true);
+                    }}
+                    className="text-[11px] text-blue-600 underline"
+                  >
+                    /{" "}
+                    {currentExam?.monthly_study_goal_hours != null
+                      ? `${currentExam.monthly_study_goal_hours}時間`
+                      : "未設定"}
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min={1}
+                      max={500}
+                      value={goalInput}
+                      onChange={(e) => setGoalInput(e.target.value)}
+                      placeholder="時間"
+                      className="w-14 rounded border border-gray-300 px-1 py-0.5 text-xs"
+                    />
+                    <button
+                      type="button"
+                      disabled={savingGoal}
+                      onClick={() => void handleSaveGoal()}
+                      className="text-[11px] font-semibold text-blue-600 disabled:opacity-50"
+                    >
+                      {savingGoal ? "…" : "保存"}
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="flex flex-col items-center gap-1">
                 <span className="flex items-center gap-1 text-[11px] text-gray-500">
@@ -325,7 +420,8 @@ export default function MyPage() {
                   週間学習日数
                 </span>
                 <p className="text-lg font-bold text-gray-900">
-                  5<span className="text-xs font-medium text-gray-500">日</span>
+                  {studyDaysThisWeek !== null ? studyDaysThisWeek : "…"}
+                  <span className="text-xs font-medium text-gray-500">日</span>
                 </p>
                 <p className="text-[11px] text-gray-400">/ 7日</p>
               </div>
@@ -334,8 +430,10 @@ export default function MyPage() {
                   <FlagIcon className="h-3.5 w-3.5" />
                   受験予定
                 </span>
-                <p className="text-sm font-bold text-gray-900">2025/11/15</p>
-                <p className="text-[11px] text-gray-400">ITパスポート</p>
+                <p className="text-sm font-bold text-gray-900">
+                  {currentExam?.planned_exam_date ?? "未設定"}
+                </p>
+                <p className="text-[11px] text-gray-400">{currentExam?.name ?? "-"}</p>
               </div>
             </div>
           </Card>

@@ -66,6 +66,7 @@ export async function registerAndSelectExam(
     planned_exam_date: initialPlan?.plannedExamDate ?? null,
     target_syllabus_version: null,
     target_score: initialPlan?.targetScore ?? null,
+    monthly_study_goal_hours: null,
     registered_at: new Date().toISOString(),
     last_studied_at: null,
   };
@@ -102,6 +103,29 @@ export async function updateCurrentExamPlan(
     .select()
     .single();
   if (error) throw new Error(`updateCurrentExamPlan failed: ${error.message}`);
+  return UserExamSchema.parse(data);
+}
+
+/**
+ * 現在選択中の試験の「今月の目標学習時間」を更新する(マイページの学習目標カード用)。
+ */
+export async function updateCurrentExamStudyGoal(
+  userId: string,
+  monthlyStudyGoalHours: number | null
+): Promise<UserExam> {
+  const current = await getCurrentUserExam(userId);
+  if (!current) {
+    throw new Error(`現在選択中の試験が見つかりません: user_id=${userId}`);
+  }
+
+  const { data, error } = await getSupabaseClient()
+    .from("user_exams")
+    .update({ monthly_study_goal_hours: monthlyStudyGoalHours })
+    .eq("user_id", userId)
+    .eq("exam_id", current.exam_id)
+    .select()
+    .single();
+  if (error) throw new Error(`updateCurrentExamStudyGoal failed: ${error.message}`);
   return UserExamSchema.parse(data);
 }
 
