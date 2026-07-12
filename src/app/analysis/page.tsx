@@ -17,6 +17,9 @@ import { AppHeader } from "@/components/AppHeader";
 
 interface AnalysisResponse {
   stats: WeakPointStats;
+}
+
+interface AdviceResponse {
   advice: string | null;
   adviceError: string | null;
 }
@@ -105,6 +108,8 @@ export default function AnalysisPage() {
   const [data, setData] = useState<AnalysisResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [advice, setAdvice] = useState<AdviceResponse | null>(null);
+  const [adviceLoading, setAdviceLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
@@ -135,7 +140,27 @@ export default function AnalysisPage() {
         setLoading(false);
       }
     };
+
+    // AIアドバイスは集計とは別リクエストにし、失敗・遅延が他のセクションに影響しないようにする
+    const loadAdvice = async () => {
+      setAdviceLoading(true);
+      try {
+        const res = await fetch("/api/analysis/advice");
+        const adviceData = await res.json();
+        if (!res.ok) throw new Error(adviceData.error ?? "学習アドバイスの取得に失敗しました");
+        setAdvice(adviceData);
+      } catch (e) {
+        setAdvice({
+          advice: null,
+          adviceError: e instanceof Error ? e.message : "不明なエラーが発生しました",
+        });
+      } finally {
+        setAdviceLoading(false);
+      }
+    };
+
     void load();
+    void loadAdvice();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -376,14 +401,22 @@ export default function AnalysisPage() {
                 </Section>
 
                 <Section title="AIからの学習アドバイス">
-                  {data?.advice && <p className="text-sm text-gray-700">{data.advice}</p>}
-                  {data?.adviceError && (
-                    <p className="text-sm text-red-600">
-                      学習アドバイスの生成でエラーが発生しました: {data.adviceError}
-                    </p>
-                  )}
-                  {!data?.advice && !data?.adviceError && (
-                    <EmptyNote text="アドバイスを生成できませんでした。" />
+                  {adviceLoading ? (
+                    <p className="text-sm text-gray-400">生成中...</p>
+                  ) : (
+                    <>
+                      {advice?.advice && (
+                        <p className="text-sm text-gray-700">{advice.advice}</p>
+                      )}
+                      {advice?.adviceError && (
+                        <p className="text-sm text-red-600">
+                          学習アドバイスの生成でエラーが発生しました: {advice.adviceError}
+                        </p>
+                      )}
+                      {!advice?.advice && !advice?.adviceError && (
+                        <EmptyNote text="アドバイスを生成できませんでした。" />
+                      )}
+                    </>
                   )}
                 </Section>
               </>

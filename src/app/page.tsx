@@ -112,20 +112,31 @@ export default function HomePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<WeakPointStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState<string | null>(null);
   const [reminders, setReminders] = useState<HomeReminders | null>(null);
   const [isEditingDate, setIsEditingDate] = useState(false);
 
+  // 集計取得のfetch/パース処理本体(stateの更新は呼び出し側で行う)
+  const fetchStats = async () => {
+    const res = await fetch("/api/analysis");
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? "学習状況の取得に失敗しました");
+    return data as { stats: WeakPointStats; reminders: HomeReminders };
+  };
+
+  // 受験予定日の保存後など、明示的な再取得用(読み込み中表示を出す)
   const loadStats = async () => {
+    setStatsLoading(true);
     try {
-      const res = await fetch("/api/analysis");
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "学習状況の取得に失敗しました");
+      const data = await fetchStats();
       setStats(data.stats);
       setReminders(data.reminders);
       setStatsError(null);
     } catch (e) {
       setStatsError(e instanceof Error ? e.message : "不明なエラーが発生しました");
+    } finally {
+      setStatsLoading(false);
     }
   };
 
@@ -147,14 +158,31 @@ export default function HomePage() {
         if (!data.current.planned_exam_date) {
           setIsEditingDate(true);
         }
-        await loadStats();
       } catch (e) {
         setError(e instanceof Error ? e.message : "不明なエラーが発生しました");
       } finally {
         setLoading(false);
       }
     };
+
+    // 初回マウント時はstatsLoadingが既にtrueのため、ここではsetStatsLoading(true)を呼ばない
+    // (useEffect内での同期的なsetState呼び出しを避けるため)
+    const loadInitialStats = async () => {
+      try {
+        const data = await fetchStats();
+        setStats(data.stats);
+        setReminders(data.reminders);
+        setStatsError(null);
+      } catch (e) {
+        setStatsError(e instanceof Error ? e.message : "不明なエラーが発生しました");
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+
+    // 試験情報と集計は互いに依存しないため、並列に取得する(試験情報は先に表示できる)
     void loadCurrentExam();
+    void loadInitialStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -182,12 +210,16 @@ export default function HomePage() {
   const weakAreaTop3 = stats?.weakAreaTop3 ?? [];
   const examTheme = currentExam ? getExamTheme(currentExam.exam_id) : DEFAULT_EXAM_THEME;
   const ExamIcon = examTheme.icon;
-  const topMistakeLabel =
-    stats && stats.recentMistakeTypeFrequency.length > 0
+  const topMistakeLabel = statsLoading
+    ? "…"
+    : stats && stats.recentMistakeTypeFrequency.length > 0
       ? MISTAKE_TYPE_LABELS[
           stats.recentMistakeTypeFrequency[0].mistakeType as MistakeType
         ]
       : "データ収集中";
+  // 集計読み込み中は「0%」等の実データに見える値を出さず、明確な読み込み中表示にする
+  const answeredTodayDisplay = statsLoading ? "…" : `${stats ? stats.answeredToday : 0}問`;
+  const accuracyPercentDisplay = statsLoading ? "…" : `${accuracyPercent}%`;
 
   return (
     <div className="flex min-h-screen justify-center bg-gray-100">
@@ -268,7 +300,7 @@ export default function HomePage() {
                   <p className="text-xs text-gray-500">今日の問題</p>
                 </div>
                 <p className="mt-1 text-2xl font-bold text-gray-900">
-                  {stats ? stats.answeredToday : 0}問
+                  {answeredTodayDisplay}
                 </p>
               </section>
 
@@ -277,7 +309,7 @@ export default function HomePage() {
                   <ChartIcon className="h-3.5 w-3.5 text-gray-400" />
                   <p className="text-xs text-gray-500">現在の正答率</p>
                 </div>
-                <p className="mt-1 text-2xl font-bold text-gray-900">{accuracyPercent}%</p>
+                <p className="mt-1 text-2xl font-bold text-gray-900">{accuracyPercentDisplay}</p>
               </section>
             </div>
 
@@ -286,7 +318,9 @@ export default function HomePage() {
                 <FlagIcon className="h-3.5 w-3.5 text-gray-400" />
                 <p className="text-xs text-gray-500">苦手分野TOP3</p>
               </div>
-              {weakAreaTop3.length === 0 ? (
+              {statsLoading ? (
+                <p className="mt-1 text-sm text-gray-400">読み込み中...</p>
+              ) : weakAreaTop3.length === 0 ? (
                 <p className="mt-1 text-sm text-gray-400">データ収集中</p>
               ) : (
                 <ul className="mt-2 flex flex-col gap-2.5">
