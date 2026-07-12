@@ -267,7 +267,7 @@ export default function MyPage() {
   const handleLogout = async () => {
     setLoggingOut(true);
     await getAuthBrowserClient().auth.signOut();
-    router.push("/login");
+    router.push("/welcome");
     router.refresh();
   };
 

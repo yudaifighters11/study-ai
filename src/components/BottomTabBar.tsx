@@ -88,9 +88,8 @@ const TABS: TabDef[] = [
 export function BottomTabBar() {
   const pathname = usePathname();
 
-  // 初期画面(未ログイン)はアプリのナビゲーションを持たない単独のスプラッシュ画面のため表示しない。
-  // 注: /login等の他の未ログイン画面は既存の挙動を変えないため、ここでは対象外のまま残す。
-  if (pathname === "/welcome") {
+  // 未ログイン時の画面(初期画面・ログイン/新規登録画面)はアプリのナビゲーションを持たないため表示しない。
+  if (pathname === "/welcome" || pathname === "/login") {
     return null;
   }
 

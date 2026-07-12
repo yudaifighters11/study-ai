@@ -1,5 +1,5 @@
+import Image from "next/image";
 import Link from "next/link";
-import { NewStudyLogo } from "@/components/NewStudyLogo";
 
 /**
  * 未ログイン時の初期画面。ロゴ・キャッチコピー・「新しくはじめる」「ログイン」の2択のみを提示する。
@@ -12,7 +12,14 @@ export default function WelcomePage() {
         className="flex w-full max-w-sm flex-col items-center gap-8"
         style={{ animation: "fade-in-up 0.6s ease-out" }}
       >
-        <NewStudyLogo className="text-6xl sm:text-7xl" />
+        <Image
+          src="/logo-full.png"
+          alt="New Study"
+          width={1220}
+          height={335}
+          priority
+          className="h-auto w-full max-w-[300px]"
+        />
 
         <p className="text-center text-sm tracking-[0.08em] text-[#0B1E3D]">
           毎回ちがう、新しい一問を
