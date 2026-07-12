@@ -13,6 +13,7 @@ const QuestionFilterFieldsSchema = QuestionSchema.pick({
   middle_category: true,
   minor_category: true,
   detail_category: true,
+  difficulty: true,
   syllabus_version: true,
   is_current: true,
   is_current_exam_scope: true,

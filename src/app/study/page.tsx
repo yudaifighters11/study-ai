@@ -14,6 +14,15 @@ const QUESTION_COUNT_OPTIONS = [5, 10, 15, 20, 30];
 const ALL_VALUE = "";
 const ALL_LABEL = "すべて";
 
+// 難易度は1(基礎)〜5(難関)。数字だけでなく意味がわかる表示にする。複数選択可。
+const DIFFICULTY_OPTIONS = [
+  { value: "1", label: "1 基礎" },
+  { value: "2", label: "2 やさしめ" },
+  { value: "3", label: "3 標準" },
+  { value: "4", label: "4 むずかしめ" },
+  { value: "5", label: "5 難関" },
+];
+
 function MenuIcon({
   className,
   children,
@@ -107,6 +116,8 @@ export default function StudyMenuPage() {
   const [middleCategory, setMiddleCategory] = useState(ALL_VALUE);
   const [minorCategory, setMinorCategory] = useState(ALL_VALUE);
   const [detailCategory, setDetailCategory] = useState(ALL_VALUE);
+  // 難易度は複数選択可のため配列で保持する。空配列 = すべて。
+  const [difficulty, setDifficulty] = useState<string[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -192,6 +203,33 @@ export default function StudyMenuPage() {
                           label={`${count}問`}
                           selected={questionCount === count}
                           onClick={() => setQuestionCount(count)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-xs font-semibold text-gray-500">
+                      難易度(複数選択可)
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Chip
+                        label={ALL_LABEL}
+                        selected={difficulty.length === 0}
+                        onClick={() => setDifficulty([])}
+                      />
+                      {DIFFICULTY_OPTIONS.map((opt) => (
+                        <Chip
+                          key={opt.value}
+                          label={opt.label}
+                          selected={difficulty.includes(opt.value)}
+                          onClick={() =>
+                            setDifficulty((prev) =>
+                              prev.includes(opt.value)
+                                ? prev.filter((v) => v !== opt.value)
+                                : [...prev, opt.value]
+                            )
+                          }
                         />
                       ))}
                     </div>
@@ -318,7 +356,9 @@ export default function StudyMenuPage() {
                   <div className="flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
                     <TagIcon className="h-4 w-4 shrink-0" />
                     <span>
-                      選択条件　{questionCount}問・{majorCategory || ALL_LABEL}・
+                      選択条件　{questionCount}問・難易度
+                      {difficulty.length > 0 ? difficulty.join("・") : ALL_LABEL}・
+                      {majorCategory || ALL_LABEL}・
                       {middleCategory || ALL_LABEL}・{minorCategory || ALL_LABEL}・
                       {detailCategory || ALL_LABEL}
                     </span>
@@ -332,6 +372,8 @@ export default function StudyMenuPage() {
                         middleCategory: middleCategory || null,
                         minorCategory: minorCategory || null,
                         detailCategory: detailCategory || null,
+                        difficulty:
+                          difficulty.length > 0 ? difficulty.map(Number) : null,
                       });
                       router.push("/quiz");
                     }}

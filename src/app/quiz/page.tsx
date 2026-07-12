@@ -114,13 +114,16 @@ function QuizPageContent() {
           if (minorCategoryParam) params.set("minorCategory", minorCategoryParam);
           if (detailCategoryParam) params.set("detailCategory", detailCategoryParam);
         } else if (!isHistorical) {
-          // 学習メニューの分野指定機能で開始したセッションであれば、セッション中ずっと同じ分野に絞り込む
+          // 学習メニューの分野指定機能で開始したセッションであれば、セッション中ずっと同じ分野・難易度に絞り込む
           const currentSession = readQuizSession();
           const filter = currentSession?.categoryFilter;
           if (filter?.majorCategory) params.set("majorCategory", filter.majorCategory);
           if (filter?.middleCategory) params.set("middleCategory", filter.middleCategory);
           if (filter?.minorCategory) params.set("minorCategory", filter.minorCategory);
           if (filter?.detailCategory) params.set("detailCategory", filter.detailCategory);
+          if (filter?.difficulty) {
+            for (const d of filter.difficulty) params.append("difficulty", String(d));
+          }
         }
         const query = params.toString() ? `?${params.toString()}` : "";
         const res = await fetch(`/api/questions${query}`);

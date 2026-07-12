@@ -1,11 +1,13 @@
 const STORAGE_KEY = "quizSession";
 
-// 学習メニューの分野指定機能で選んだ大中小分類・詳細分類。指定しなかった階層はnull。
+// 学習メニューの分野指定機能で選んだ大中小分類・詳細分類・難易度。指定しなかった項目はnull。
 export interface QuizCategoryFilter {
   majorCategory: string | null;
   middleCategory: string | null;
   minorCategory: string | null;
   detailCategory: string | null;
+  // 1(基礎)〜5(難関)。複数選択可(いずれかに一致すれば出題対象)。指定しない場合はnull。
+  difficulty: number[] | null;
 }
 
 export interface QuizSession {

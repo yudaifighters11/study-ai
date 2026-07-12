@@ -108,6 +108,21 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // 学習メニューの難易度指定機能: 選択した難易度(複数可)のいずれかに絞り込む(任意)。
+    const difficultyParams = request.nextUrl.searchParams.getAll("difficulty");
+    if (difficultyParams.length > 0) {
+      const difficulties = difficultyParams.map(Number);
+      validQuestions = validQuestions.filter((q) =>
+        difficulties.includes(q.difficulty)
+      );
+      if (validQuestions.length === 0) {
+        return NextResponse.json(
+          { error: "指定した難易度の問題が見つかりません" },
+          { status: 404 }
+        );
+      }
+    }
+
     // 1つの文書を共有する設問グループ内で、指定した順番の設問を取得する(Part6/7の複数設問セット用)。
     // 見つからない場合(グループの最後まで解き終えた等)は通常のランダム出題にフォールバックする。
     const passageGroupId = request.nextUrl.searchParams.get("passageGroupId");
