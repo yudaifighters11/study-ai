@@ -6,6 +6,7 @@ import { getAnswerHistoryByUser } from "@/lib/csv/answerHistoryRepository";
 import { getMistakeAnalysesByUser } from "@/lib/csv/mistakeAnalysisRepository";
 import { getQuestionsForFiltering } from "@/lib/csv/questionRepository";
 import { computeWeakPointStats } from "@/lib/analysis/computeWeakPointStats";
+import { computeHomeReminders } from "@/lib/analysis/computeHomeReminders";
 import { generateStudyAdvice } from "@/lib/openai/generateStudyAdvice";
 import { toErrorResponse } from "@/lib/apiErrorHandler";
 
@@ -45,6 +46,12 @@ export async function GET() {
       questions
     );
 
+    const reminders = computeHomeReminders({
+      answerHistory: scopedAnswerHistory,
+      lastStudiedAt: currentExam.last_studied_at,
+      plannedExamDate: currentExam.planned_exam_date,
+    });
+
     let advice: string | null = null;
     let adviceError: string | null = null;
 
@@ -62,7 +69,7 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json({ stats, advice, adviceError });
+    return NextResponse.json({ stats, advice, adviceError, reminders });
   } catch (error) {
     return toErrorResponse(error);
   }

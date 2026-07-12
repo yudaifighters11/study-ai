@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { WeakPointStats } from "@/lib/analysis/computeWeakPointStats";
+import { HomeReminders } from "@/lib/analysis/computeHomeReminders";
 import { MISTAKE_TYPE_LABELS, MistakeType } from "@/types/enums";
 import { RegisteredExam } from "@/lib/examPresenter";
 import { DEFAULT_EXAM_THEME, getExamTheme } from "@/components/examTheme";
@@ -93,6 +94,15 @@ function ChevronRightIcon(props: { className?: string }) {
   );
 }
 
+function BellIcon(props: { className?: string }) {
+  return (
+    <IconWrapper {...props}>
+      <path d="M6 9a6 6 0 0 1 12 0c0 4 1.5 5.5 1.5 5.5H4.5S6 13 6 9Z" />
+      <path d="M10 18a2 2 0 0 0 4 0" />
+    </IconWrapper>
+  );
+}
+
 export default function HomePage() {
   const router = useRouter();
   const [currentExam, setCurrentExam] = useState<RegisteredExam | null>(null);
@@ -103,6 +113,7 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<WeakPointStats | null>(null);
   const [statsError, setStatsError] = useState<string | null>(null);
+  const [reminders, setReminders] = useState<HomeReminders | null>(null);
   const [isEditingDate, setIsEditingDate] = useState(false);
 
   const loadStats = async () => {
@@ -111,6 +122,7 @@ export default function HomePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "学習状況の取得に失敗しました");
       setStats(data.stats);
+      setReminders(data.reminders);
       setStatsError(null);
     } catch (e) {
       setStatsError(e instanceof Error ? e.message : "不明なエラーが発生しました");
@@ -197,6 +209,31 @@ export default function HomePage() {
               </p>
               <ChevronDownIcon className="h-4 w-4 shrink-0 text-gray-400" />
             </Link>
+
+            {/* 復習・学習リマインドバナー(ホーム画面表示のみ、通知等は行わない) */}
+            {reminders && reminders.reviewNeededCount > 0 && (
+              <Link
+                href="/study/mistakes"
+                className="flex items-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 p-3 text-sm text-orange-900"
+              >
+                <BellIcon className="h-4 w-4 shrink-0 text-orange-500" />
+                <span className="flex-1">
+                  復習が必要な問題が{reminders.reviewNeededCount}問あります
+                </span>
+                <ChevronRightIcon className="h-4 w-4 shrink-0 text-orange-400" />
+              </Link>
+            )}
+
+            {reminders?.showStudyReminder && (
+              <div className="flex items-center gap-2 rounded-2xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+                <BellIcon className="h-4 w-4 shrink-0 text-blue-500" />
+                <span className="flex-1">
+                  {reminders.daysUntilExam !== null
+                    ? `受験まであと${reminders.daysUntilExam}日です。学習を進めましょう`
+                    : `${reminders.daysSinceLastStudy}日間学習していません。今日も少し解いてみましょう`}
+                </span>
+              </div>
+            )}
 
             {/* メインの学習導線: 学習メニュー画面(/study)を経由する */}
             <button
