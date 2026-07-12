@@ -1,6 +1,50 @@
+import { z } from "zod";
 import { getSupabaseClient } from "@/lib/supabase/supabaseClient";
 import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
 import { Question, QuestionSchema } from "@/types/question";
+
+// 出題可否の判定・弱点分析の集計にしか使わない場合の軽量な列だけを取得するための型。
+// 問題文・選択肢・解説などの重いテキスト列を除くことで、通信量と応答時間を減らす。
+const QuestionFilterFieldsSchema = QuestionSchema.pick({
+  question_id: true,
+  exam_type: true,
+  question_text: true,
+  major_category: true,
+  middle_category: true,
+  minor_category: true,
+  detail_category: true,
+  syllabus_version: true,
+  is_current: true,
+  is_current_exam_scope: true,
+  passage_group_id: true,
+  passage_order: true,
+  passage_total_questions: true,
+});
+export type QuestionFilterFields = z.infer<typeof QuestionFilterFieldsSchema>;
+
+const FILTER_COLUMNS = Object.keys(QuestionFilterFieldsSchema.shape).join(", ");
+
+/**
+ * 出題可否の判定(有効性フィルタ)・弱点分析の集計専用の軽量取得。
+ * 問題文以外の重いテキスト列(選択肢・解説等)を取得しないため、getAllQuestionsより高速。
+ * 実際に出題する1問が決まった後は、必ずgetQuestionByIdで全項目を取得し直すこと。
+ */
+export async function getQuestionsForFiltering(
+  examType: string
+): Promise<QuestionFilterFields[]> {
+  const supabase = getSupabaseClient();
+  const rows = await fetchAllRows<Record<string, unknown>>(([from, to]) =>
+    supabase
+      .from("questions")
+      .select(FILTER_COLUMNS)
+      .eq("exam_type", examType)
+      .range(from, to) as unknown as PromiseLike<{
+      data: Record<string, unknown>[] | null;
+      error: { message: string } | null;
+    }>
+  );
+  return rows.map((row) => QuestionFilterFieldsSchema.parse(row));
+}
 
 /**
  * examTypeを指定すると、その試験の問題だけを取得する(呼び出し元が対象試験を分かっている場合は

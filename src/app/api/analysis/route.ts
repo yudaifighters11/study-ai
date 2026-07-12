@@ -4,7 +4,7 @@ import { getExamLabel } from "@/lib/csv/examRepository";
 import { getCurrentUserExam } from "@/lib/csv/userExamRepository";
 import { getAnswerHistoryByUser } from "@/lib/csv/answerHistoryRepository";
 import { getMistakeAnalysesByUser } from "@/lib/csv/mistakeAnalysisRepository";
-import { getAllQuestions } from "@/lib/csv/questionRepository";
+import { getQuestionsForFiltering } from "@/lib/csv/questionRepository";
 import { computeWeakPointStats } from "@/lib/analysis/computeWeakPointStats";
 import { generateStudyAdvice } from "@/lib/openai/generateStudyAdvice";
 import { toErrorResponse } from "@/lib/apiErrorHandler";
@@ -24,7 +24,7 @@ export async function GET() {
     const [answerHistory, mistakeAnalyses, questions] = await Promise.all([
       getAnswerHistoryByUser(userId),
       getMistakeAnalysesByUser(userId),
-      getAllQuestions(examType),
+      getQuestionsForFiltering(examType),
     ]);
 
     // 試験ごとにデータを分けて集計する(複数試験を扱えるようにするための仕組み)

@@ -85,10 +85,16 @@ export interface WeakPointStats {
 const MIN_SAMPLES_FOR_WEAKEST_CATEGORY = 2;
 const RECENT_MISTAKE_WINDOW = 10;
 
+// この集計に必要な列だけを持っていればよい(getAllQuestions/getQuestionsForFilteringの両方を受け付ける)。
+type StatsQuestion = Pick<
+  Question,
+  "question_id" | "question_text" | "major_category" | "middle_category" | "minor_category"
+>;
+
 export function computeWeakPointStats(
   answerHistory: AnswerHistory[],
   mistakeAnalyses: MistakeAnalysis[],
-  questions: Question[]
+  questions: StatsQuestion[]
 ): WeakPointStats {
   const questionById = new Map(questions.map((q) => [q.question_id, q]));
 

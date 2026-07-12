@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getFixedUserId } from "@/lib/config";
 import { getCurrentUserExam } from "@/lib/csv/userExamRepository";
-import { getAllQuestions, getQuestionById } from "@/lib/csv/questionRepository";
+import { getQuestionsForFiltering, getQuestionById } from "@/lib/csv/questionRepository";
 import { getExamById } from "@/lib/csv/examRepository";
 import { getAllSyllabusVersions } from "@/lib/csv/syllabusRepository";
 import { filterHistoricalQuestions, filterValidQuestions } from "@/lib/syllabus/filterValidQuestions";
@@ -61,8 +61,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ question: toPublicQuestion(question) });
     }
 
-    // 現在の試験の問題だけを取得する(全試験分を取得すると通信量・応答時間が無駄に増えるため)
-    const allQuestions = await getAllQuestions(examType);
+    // 現在の試験の問題だけを、出題可否の判定に必要な軽量な列だけで取得する
+    // (問題文以外の重いテキスト列を毎回取得すると通信量・応答時間が無駄に増えるため)
+    const allQuestions = await getQuestionsForFiltering(examType);
 
     // 「過去の問題を見る」モード: 現行の出題対象ではない問題(旧シラバス・出題対象外等)を出題する
     const mode = request.nextUrl.searchParams.get("mode");
@@ -116,7 +117,10 @@ export async function GET(request: NextRequest) {
           q.passage_order === passageOrder
       );
       if (nextInGroup) {
-        return NextResponse.json({ question: toPublicQuestion(nextInGroup) });
+        const fullQuestion = await getQuestionById(nextInGroup.question_id);
+        if (fullQuestion) {
+          return NextResponse.json({ question: toPublicQuestion(fullQuestion) });
+        }
       }
     }
 
@@ -138,8 +142,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const question =
+    const picked =
       randomCandidates[Math.floor(Math.random() * randomCandidates.length)];
+    const question = await getQuestionById(picked.question_id);
+    if (!question) {
+      return NextResponse.json(
+        { error: "指定された問題が見つかりません" },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({ question: toPublicQuestion(question) });
   } catch (error) {
