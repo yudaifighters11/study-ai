@@ -3,12 +3,12 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // 未ログインでもアクセスでき、ログイン済みでもホームへ戻されないパス(規約・プライバシーポリシー等)。
 const ALWAYS_PUBLIC_PATHS = ["/terms", "/privacy"];
-// 未ログインでもアクセスできるが、ログイン済みならホームへ戻すパス。
-const LOGIN_ONLY_PATHS = ["/login"];
+// 未ログインでもアクセスできるが、ログイン済みならホームへ戻すパス(初期画面・ログイン画面)。
+const LOGIN_ONLY_PATHS = ["/welcome", "/login"];
 
 /**
- * 全画面共通のログインチェック。未ログインなら/loginへ誘導し、
- * ログイン済みなら/loginへのアクセスをホームへ戻す。
+ * 全画面共通のログインチェック。未ログインなら初期画面(/welcome)へ誘導し、
+ * ログイン済みなら/welcome・/loginへのアクセスをホームへ戻す。
  * セッションの検証・更新はここで必ず行う(Supabase公式の推奨パターン)。
  */
 export async function middleware(request: NextRequest) {
@@ -54,8 +54,8 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!user && !isLoginOnlyPath) {
-    const loginUrl = new URL("/login", request.url);
-    return NextResponse.redirect(loginUrl);
+    const welcomeUrl = new URL("/welcome", request.url);
+    return NextResponse.redirect(welcomeUrl);
   }
 
   if (user && isLoginOnlyPath) {
