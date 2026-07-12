@@ -7,6 +7,7 @@ import { WeakPointStats } from "@/lib/analysis/computeWeakPointStats";
 import { MISTAKE_TYPE_LABELS, MistakeType } from "@/types/enums";
 import { RegisteredExam } from "@/lib/examPresenter";
 import { DEFAULT_EXAM_THEME, getExamTheme } from "@/components/examTheme";
+import { AppHeader } from "@/components/AppHeader";
 
 function IconWrapper({
   children,
@@ -179,9 +180,7 @@ export default function HomePage() {
   return (
     <div className="flex min-h-screen justify-center bg-gray-100">
       <div className="flex w-full max-w-[430px] md:max-w-2xl flex-col border-x border-gray-200 bg-gray-50">
-        <header className="border-b border-gray-200 bg-white px-4 py-4 md:px-6 md:py-5">
-          <p className="text-center text-base font-semibold text-gray-900">ホーム</p>
-        </header>
+        <AppHeader title="ホーム" />
 
         {loading || !currentExam ? (
           <p className="p-4 text-sm text-gray-500">読み込み中...</p>

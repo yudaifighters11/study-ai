@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BackToHomeLink } from "@/components/BackToHomeLink";
+import { AppHeader } from "@/components/AppHeader";
 
 interface Exam {
   exam_id: string;
@@ -94,11 +95,7 @@ export default function ExamSelectPage() {
   return (
     <div className="flex min-h-screen justify-center bg-gray-100">
       <div className="flex w-full max-w-[430px] md:max-w-2xl flex-col border-x border-gray-200 bg-gray-50">
-        <header className="border-b border-gray-200 bg-white px-4 py-4 md:px-6 md:py-5">
-          <p className="text-center text-base font-semibold text-gray-900">
-            試験を選択
-          </p>
-        </header>
+        <AppHeader title="試験を選択" />
 
         {loading ? (
           <p className="p-4 text-sm text-gray-500">読み込み中...</p>

@@ -1,4 +1,5 @@
 import { getExamTheme } from "@/components/examTheme";
+import { AppHeader } from "@/components/AppHeader";
 
 /**
  * マイページ画面の枠組みのみ。表示内容はすべて仮の値で、実際のアカウント情報・
@@ -189,11 +190,7 @@ export default function MyPage() {
   return (
     <div className="flex min-h-screen justify-center bg-gray-100">
       <div className="flex w-full max-w-[430px] md:max-w-2xl flex-col border-x border-gray-200 bg-gray-50">
-        <header className="border-b border-gray-200 bg-white px-4 py-4 md:px-6 md:py-5">
-          <p className="text-center text-base font-semibold text-gray-900">
-            マイページ
-          </p>
-        </header>
+        <AppHeader title="マイページ" />
 
         <main className="flex flex-col gap-4 p-4 md:p-6">
           {/* プロフィール(仮の値) */}

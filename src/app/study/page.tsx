@@ -7,6 +7,7 @@ import { startQuizSession } from "@/lib/quizSession";
 import { RegisteredExam } from "@/lib/examPresenter";
 import { DEFAULT_EXAM_THEME, getExamTheme } from "@/components/examTheme";
 import { Chip } from "@/components/Chip";
+import { AppHeader } from "@/components/AppHeader";
 import type { CategoryMajorOption } from "@/app/api/categories/route";
 
 const QUESTION_COUNT_OPTIONS = [5, 10, 15, 20, 30];
@@ -146,9 +147,7 @@ export default function StudyMenuPage() {
   return (
     <div className="flex min-h-screen justify-center bg-gray-100">
       <div className="flex w-full max-w-[430px] md:max-w-2xl flex-col border-x border-gray-200 bg-gray-50">
-        <header className="border-b border-gray-200 bg-white px-4 py-4 md:px-6 md:py-5">
-          <p className="text-center text-base font-semibold text-gray-900">学習</p>
-        </header>
+        <AppHeader title="学習" />
 
         <main className="flex flex-col gap-4 p-4 md:p-6">
           {!loading && currentExam && (

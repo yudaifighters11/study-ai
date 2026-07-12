@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { BackToHomeLink } from "@/components/BackToHomeLink";
 import { Chip } from "@/components/Chip";
+import { AppHeader } from "@/components/AppHeader";
 import type { MistakeListItem } from "@/app/api/mistakes/route";
 
 const ALL_VALUE = "";
@@ -101,11 +102,7 @@ export default function MistakesPage() {
   return (
     <div className="flex min-h-screen justify-center bg-gray-100">
       <div className="flex w-full max-w-[430px] md:max-w-2xl flex-col border-x border-gray-200 bg-gray-50">
-        <header className="border-b border-gray-200 bg-white px-4 py-4 md:px-6 md:py-5">
-          <p className="text-center text-base font-semibold text-gray-900">
-            間違えた問題
-          </p>
-        </header>
+        <AppHeader title="間違えた問題" />
 
         <main className="flex flex-col gap-4 p-4 md:p-6">
           <BackToHomeLink />
