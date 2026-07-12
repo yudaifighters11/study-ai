@@ -1,7 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login"];
+// 未ログインでもアクセスでき、ログイン済みでもホームへ戻されないパス(規約・プライバシーポリシー等)。
+const ALWAYS_PUBLIC_PATHS = ["/terms", "/privacy"];
+// 未ログインでもアクセスできるが、ログイン済みならホームへ戻すパス。
+const LOGIN_ONLY_PATHS = ["/login"];
 
 /**
  * 全画面共通のログインチェック。未ログインなら/loginへ誘導し、
@@ -36,7 +39,8 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isPublicPath = PUBLIC_PATHS.includes(request.nextUrl.pathname);
+  const isAlwaysPublicPath = ALWAYS_PUBLIC_PATHS.includes(request.nextUrl.pathname);
+  const isLoginOnlyPath = LOGIN_ONLY_PATHS.includes(request.nextUrl.pathname);
   const isApiPath = request.nextUrl.pathname.startsWith("/api/");
 
   // APIルートは画面へのリダイレクトではなく、各ルート側で401 JSONを返す(fetch呼び出し側が扱いやすいように)。
@@ -45,12 +49,16 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  if (!user && !isPublicPath) {
+  if (isAlwaysPublicPath) {
+    return response;
+  }
+
+  if (!user && !isLoginOnlyPath) {
     const loginUrl = new URL("/login", request.url);
     return NextResponse.redirect(loginUrl);
   }
 
-  if (user && isPublicPath) {
+  if (user && isLoginOnlyPath) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 

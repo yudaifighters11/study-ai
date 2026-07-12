@@ -76,6 +76,9 @@ async function main() {
       user_id: row.user_id,
       display_name: row.display_name,
       email: decodeNullable(row.email),
+      age_group: null,
+      occupation: null,
+      terms_agreed_at: null,
       created_at: row.created_at,
     })
   );
@@ -89,6 +92,7 @@ async function main() {
     is_current: row.is_current.trim().toLowerCase() === "true",
     planned_exam_date: decodeNullable(row.planned_exam_date),
     target_syllabus_version: decodeNullable(row.target_syllabus_version),
+    target_score: null,
     registered_at: row.registered_at,
     last_studied_at: decodeNullable(row.last_studied_at),
   }));

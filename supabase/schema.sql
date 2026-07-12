@@ -16,12 +16,14 @@ create table exams (
 
 -- ============================================================
 -- users.csv
--- 本格的なログイン機能は初期スコープ外のため、固定ユーザーIDのみを想定。
 -- ============================================================
 create table users (
   user_id text primary key,
   display_name text not null,
   email text,
+  age_group text check (age_group in ('10s', '20s', '30s', '40s', '50s_plus')),
+  occupation text check (occupation in ('junior_high', 'high_school', 'university', 'working_adult', 'other')),
+  terms_agreed_at timestamptz,
   created_at timestamptz not null default now()
 );
 
@@ -34,6 +36,7 @@ create table user_exams (
   is_current boolean not null default false,
   planned_exam_date date,
   target_syllabus_version text,
+  target_score integer,
   registered_at timestamptz not null default now(),
   last_studied_at timestamptz,
   primary key (user_id, exam_id)

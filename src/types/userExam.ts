@@ -13,6 +13,8 @@ export const UserExamSchema = z.object({
   planned_exam_date: z.string().nullable(),
   // 受験予定日から判定された対象シラバスバージョン。シラバス体系を持たない試験、または未判定の場合はnull。
   target_syllabus_version: z.string().nullable(),
+  // 目標スコアまたは目標点。未設定(未定)の場合はnull。
+  target_score: z.number().nullable(),
   registered_at: z.string(), // ISO日時
   // この試験で最後に問題に回答した日時。未回答の場合はnull。「最近学習した試験」の判定に使う。
   last_studied_at: z.string().nullable(),

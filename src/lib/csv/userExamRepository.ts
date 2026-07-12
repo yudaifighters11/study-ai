@@ -17,11 +17,13 @@ export async function getCurrentUserExam(userId: string): Promise<UserExam | nul
 
 /**
  * 指定した試験をユーザーの学習対象として登録し、現在の試験として選択する。
- * 未登録の場合は新規登録し、登録済みの場合は既存の受験予定日・対象シラバス・最終学習日時を保持したまま選択状態のみ切り替える。
+ * 未登録の場合は新規登録し、登録済みの場合は既存の受験予定日・対象シラバス・目標スコア・最終学習日時を保持したまま選択状態のみ切り替える。
+ * initialPlan は新規登録時にのみ使用する(サインアップ時に受験予定日・目標スコアを入力した場合)。既存登録がある場合は無視する。
  */
 export async function registerAndSelectExam(
   userId: string,
-  examId: string
+  examId: string,
+  initialPlan?: { plannedExamDate?: string | null; targetScore?: number | null }
 ): Promise<UserExam> {
   const supabase = getSupabaseClient();
 
@@ -61,8 +63,9 @@ export async function registerAndSelectExam(
     user_id: userId,
     exam_id: examId,
     is_current: true,
-    planned_exam_date: null,
+    planned_exam_date: initialPlan?.plannedExamDate ?? null,
     target_syllabus_version: null,
+    target_score: initialPlan?.targetScore ?? null,
     registered_at: new Date().toISOString(),
     last_studied_at: null,
   };
