@@ -2,13 +2,13 @@ import { CHOICE_KEYS, ChoiceKey } from "@/types/enums";
 
 /**
  * 選択肢テキストを持つ最小限の形。
- * a〜dは必須、e〜hは未使用の場合null(空欄)。
+ * a〜cは必須、d〜hは未使用の場合null(空欄、TOEICリスニングPart2等の3択問題ではdもnull)。
  */
 export interface ChoiceTextBearing {
   choice_a: string;
   choice_b: string;
   choice_c: string;
-  choice_d: string;
+  choice_d: string | null;
   choice_e: string | null;
   choice_f: string | null;
   choice_g: string | null;
@@ -19,7 +19,7 @@ export interface ChoiceExplanationBearing {
   choice_a_explanation: string;
   choice_b_explanation: string;
   choice_c_explanation: string;
-  choice_d_explanation: string;
+  choice_d_explanation: string | null;
   choice_e_explanation: string | null;
   choice_f_explanation: string | null;
   choice_g_explanation: string | null;

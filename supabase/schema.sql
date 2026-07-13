@@ -29,6 +29,8 @@ create table users (
   review_reminder_threshold_days integer not null default 3,
   study_inactivity_threshold_days integer not null default 3,
   exam_proximity_threshold_days integer not null default 7,
+  listening_show_question_text boolean not null default true,
+  listening_show_choice_text boolean not null default true,
   created_at timestamptz not null default now()
 );
 
@@ -120,7 +122,7 @@ create table questions (
   choice_a text not null,
   choice_b text not null,
   choice_c text not null,
-  choice_d text not null,
+  choice_d text, -- 3択問題(TOEIC Part2等)ではnull
   choice_e text,
   choice_f text,
   choice_g text,
@@ -132,7 +134,7 @@ create table questions (
   choice_a_explanation text not null,
   choice_b_explanation text not null,
   choice_c_explanation text not null,
-  choice_d_explanation text not null,
+  choice_d_explanation text, -- 3択問題(TOEIC Part2等)ではnull
   choice_e_explanation text,
   choice_f_explanation text,
   choice_g_explanation text,
@@ -163,6 +165,7 @@ create table questions (
   similar_question_blocked boolean not null default false,
   audio_url text,
   script_text text,
+  script_text_ja text, -- 音声スクリプトの日本語訳。画面表示機能は未実装(将来用)。
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

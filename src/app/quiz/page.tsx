@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { QuestionAnswerForm } from "@/components/QuestionAnswerForm";
+import {
+  ListeningDisplaySettings,
+  QuestionAnswerForm,
+} from "@/components/QuestionAnswerForm";
 import { BackToHomeLink } from "@/components/BackToHomeLink";
 import { DEFAULT_EXAM_THEME, getExamTheme } from "@/components/examTheme";
 import { AppHeader } from "@/components/AppHeader";
@@ -62,6 +65,8 @@ function QuizPageContent() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [session, setSession] = useState<QuizSession | null>(null);
   const [currentExam, setCurrentExam] = useState<RegisteredExam | null>(null);
+  const [listeningDisplay, setListeningDisplay] =
+    useState<ListeningDisplaySettings | null>(null);
 
   useEffect(() => {
     // 「過去の問題を見る」モード・間違えた問題の解き直しは問題数セッションの対象外(採点に組み込まない)
@@ -82,6 +87,43 @@ function QuizPageContent() {
     };
     void loadCurrentExam();
   }, []);
+
+  useEffect(() => {
+    const loadListeningDisplay = async () => {
+      try {
+        const res = await fetch("/api/user");
+        const data = await res.json();
+        if (res.ok && data.user) {
+          setListeningDisplay({
+            showQuestionText: data.user.listening_show_question_text,
+            showChoiceText: data.user.listening_show_choice_text,
+          });
+        }
+      } catch {
+        // 表示設定の取得のみに使う情報のため、失敗しても致命的ではない(既定値のまま表示)
+      }
+    };
+    void loadListeningDisplay();
+  }, []);
+
+  const handleChangeListeningDisplay = (
+    field: keyof ListeningDisplaySettings,
+    value: boolean
+  ) => {
+    setListeningDisplay((prev) => ({
+      showQuestionText: prev?.showQuestionText ?? true,
+      showChoiceText: prev?.showChoiceText ?? true,
+      [field]: value,
+    }));
+    void fetch("/api/user/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        [field === "showQuestionText" ? "listeningShowQuestionText" : "listeningShowChoiceText"]:
+          value,
+      }),
+    });
+  };
 
   useEffect(() => {
     const loadQuestion = async () => {
@@ -275,6 +317,8 @@ function QuizPageContent() {
               onSubmit={handleSubmit}
               submitting={submitting}
               submitError={submitError}
+              listeningDisplay={listeningDisplay ?? undefined}
+              onChangeListeningDisplay={handleChangeListeningDisplay}
               headerBadge={
                 isHistorical ? (
                   <span className="rounded bg-amber-200 px-2 py-1 text-amber-900">

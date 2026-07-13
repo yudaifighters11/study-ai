@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthenticatedUserId } from "@/lib/supabase/authServerClient";
-import { updateReminderSettings } from "@/lib/csv/userRepository";
+import { updateUserSettings } from "@/lib/csv/userRepository";
 import { toErrorResponse } from "@/lib/apiErrorHandler";
 
 const RequestSchema = z
@@ -11,6 +11,8 @@ const RequestSchema = z
     reviewReminderThresholdDays: z.number().int().min(1).max(60).optional(),
     studyInactivityThresholdDays: z.number().int().min(1).max(60).optional(),
     examProximityThresholdDays: z.number().int().min(1).max(60).optional(),
+    listeningShowQuestionText: z.boolean().optional(),
+    listeningShowChoiceText: z.boolean().optional(),
   })
   .refine((v) => Object.values(v).some((value) => value !== undefined), {
     message: "更新項目がありません",
@@ -35,7 +37,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "ログインが必要です" }, { status: 401 });
     }
 
-    const updated = await updateReminderSettings(userId, {
+    const updated = await updateUserSettings(userId, {
       ...(parsed.data.reviewReminderEnabled !== undefined && {
         review_reminder_enabled: parsed.data.reviewReminderEnabled,
       }),
@@ -50,6 +52,12 @@ export async function POST(request: NextRequest) {
       }),
       ...(parsed.data.examProximityThresholdDays !== undefined && {
         exam_proximity_threshold_days: parsed.data.examProximityThresholdDays,
+      }),
+      ...(parsed.data.listeningShowQuestionText !== undefined && {
+        listening_show_question_text: parsed.data.listeningShowQuestionText,
+      }),
+      ...(parsed.data.listeningShowChoiceText !== undefined && {
+        listening_show_choice_text: parsed.data.listeningShowChoiceText,
       }),
     });
 

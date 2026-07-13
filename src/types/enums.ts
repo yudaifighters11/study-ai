@@ -6,7 +6,7 @@
 export const QUESTION_TYPES = ["original", "ai_generated"] as const;
 export type QuestionType = (typeof QUESTION_TYPES)[number];
 
-// 選択肢の枠は最大8択分用意する。a〜dは必須、e〜hは未使用の場合は空欄(null)にする。
+// 選択肢の枠は最大8択分用意する。a〜cは必須、d〜hは未使用の場合は空欄(null)にする(TOEICリスニングPart2等の3択問題ではdもnull)。
 export const CHOICE_KEYS = ["a", "b", "c", "d", "e", "f", "g", "h"] as const;
 export type ChoiceKey = (typeof CHOICE_KEYS)[number];
 // 常に埋まっている(必須の)選択肢キー

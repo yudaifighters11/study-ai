@@ -1,11 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChoiceKey, ConfidenceLevel } from "@/types/enums";
 import { PublicQuestion } from "@/lib/questionPresenter";
 import { getActiveChoiceKeys, getChoiceText } from "@/lib/questionChoices";
 import { getExamTheme } from "@/components/examTheme";
 import { ConfidenceSelector } from "./ConfidenceSelector";
+
+export interface ListeningDisplaySettings {
+  showQuestionText: boolean;
+  showChoiceText: boolean;
+}
 
 interface QuestionAnswerFormProps {
   question: PublicQuestion;
@@ -17,6 +22,91 @@ interface QuestionAnswerFormProps {
   submitting: boolean;
   submitError?: string | null;
   headerBadge?: React.ReactNode;
+  // リスニング問題(exam_type === "toeic_listening")のみで使用する、問題文・問の文の表示設定。
+  listeningDisplay?: ListeningDisplaySettings;
+  onChangeListeningDisplay?: (
+    field: keyof ListeningDisplaySettings,
+    value: boolean
+  ) => void;
+}
+
+function ToggleSwitch({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={onChange}
+      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+        checked ? "bg-blue-600" : "bg-gray-300"
+      }`}
+    >
+      <span
+        className={`inline-block h-5 w-5 translate-x-0.5 rounded-full bg-white shadow transition-transform ${
+          checked ? "translate-x-5" : "translate-x-0.5"
+        }`}
+      />
+    </button>
+  );
+}
+
+function PlayIcon(props: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={props.className}>
+      <path d="M8 5v14l11-7z" />
+    </svg>
+  );
+}
+
+/**
+ * リスニング問題の音声再生UI(枠組みのみ)。
+ * audio_urlがまだない問題(現時点ではすべて)は再生ボタンを無効化し、仮実装であることを明示する。
+ * 音声合成・保存の実装後、audio_urlが入るようになれば自動的に再生できるようになる。
+ */
+function ListeningAudioPlayer({ audioUrl }: { audioUrl: string | null }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-4">
+      <button
+        type="button"
+        disabled={!audioUrl}
+        onClick={() => {
+          if (!audioRef.current) return;
+          void audioRef.current.play();
+        }}
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white transition-colors disabled:bg-gray-300"
+      >
+        <PlayIcon className="h-5 w-5" />
+      </button>
+      <div className="flex flex-col">
+        <span className="text-sm font-semibold text-gray-900">
+          {playing ? "再生中..." : "音声を再生"}
+        </span>
+        {!audioUrl && (
+          <span className="text-xs text-gray-500">
+            仮実装: この問題の音声はまだ準備されていません
+          </span>
+        )}
+      </div>
+      {audioUrl && (
+        <audio
+          ref={audioRef}
+          src={audioUrl}
+          onPlay={() => setPlaying(true)}
+          onEnded={() => setPlaying(false)}
+          className="hidden"
+        />
+      )}
+    </div>
+  );
 }
 
 /**
@@ -29,6 +119,8 @@ export function QuestionAnswerForm({
   submitting,
   submitError,
   headerBadge,
+  listeningDisplay,
+  onChangeListeningDisplay,
 }: QuestionAnswerFormProps) {
   const [selectedChoice, setSelectedChoice] = useState<ChoiceKey | null>(null);
   const [confidenceLevel, setConfidenceLevel] = useState<ConfidenceLevel | null>(
@@ -44,6 +136,9 @@ export function QuestionAnswerForm({
 
   const canSubmit = selectedChoice !== null && !submitting;
   const examTheme = getExamTheme(question.exam_type);
+  const isListening = question.exam_type === "toeic_listening";
+  const showQuestionText = !isListening || (listeningDisplay?.showQuestionText ?? true);
+  const showChoiceText = !isListening || (listeningDisplay?.showChoiceText ?? true);
 
   const handleSubmit = () => {
     if (!selectedChoice) return;
@@ -87,9 +182,36 @@ export function QuestionAnswerForm({
         </div>
       )}
 
-      <p className="whitespace-pre-wrap text-base font-medium leading-relaxed text-gray-900">
-        {question.question_text}
-      </p>
+      {isListening && <ListeningAudioPlayer audioUrl={question.audio_url} />}
+
+      {isListening && onChangeListeningDisplay && (
+        <div className="flex flex-col gap-2 rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-gray-700">問題文を表示</span>
+            <ToggleSwitch
+              checked={showQuestionText}
+              onChange={() =>
+                onChangeListeningDisplay("showQuestionText", !showQuestionText)
+              }
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-gray-700">問の文(選択肢の文)を表示</span>
+            <ToggleSwitch
+              checked={showChoiceText}
+              onChange={() =>
+                onChangeListeningDisplay("showChoiceText", !showChoiceText)
+              }
+            />
+          </div>
+        </div>
+      )}
+
+      {showQuestionText && (
+        <p className="whitespace-pre-wrap text-base font-medium leading-relaxed text-gray-900">
+          {question.question_text}
+        </p>
+      )}
 
       <div className="flex flex-col gap-2.5">
         {getActiveChoiceKeys(question).map((key, i) => (
@@ -113,7 +235,8 @@ export function QuestionAnswerForm({
               )}
             </span>
             <span className="text-gray-900">
-              {i + 1}. {getChoiceText(question, key)}
+              {i + 1}
+              {showChoiceText ? `. ${getChoiceText(question, key)}` : ""}
             </span>
           </button>
         ))}

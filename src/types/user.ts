@@ -36,6 +36,10 @@ export const UserSchema = z.object({
   study_inactivity_threshold_days: z.number().int().min(1),
   // 学習リマインド: 受験予定日まで何日以内なら表示するか
   exam_proximity_threshold_days: z.number().int().min(1),
+  // リスニング問題(TOEIC Part2等)で、問題文(ナレーターの質問・発言)を表示するか
+  listening_show_question_text: z.boolean(),
+  // リスニング問題で、問の文(3つの応答選択肢の文)を表示するか
+  listening_show_choice_text: z.boolean(),
   created_at: z.string(), // ISO日時
 });
 

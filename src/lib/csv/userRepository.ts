@@ -22,9 +22,10 @@ export async function ensureUserProfile(user: User): Promise<void> {
 }
 
 /**
- * マイページの「通知・リマインド」設定(ON/OFFと日数しきい値)の更新。
+ * マイページの「通知・リマインド」設定、リスニング問題の表示設定など、
+ * users行に対するユーザー単位の設定更新をまとめて扱う。
  */
-export async function updateReminderSettings(
+export async function updateUserSettings(
   userId: string,
   settings: Partial<
     Pick<
@@ -34,6 +35,8 @@ export async function updateReminderSettings(
       | "review_reminder_threshold_days"
       | "study_inactivity_threshold_days"
       | "exam_proximity_threshold_days"
+      | "listening_show_question_text"
+      | "listening_show_choice_text"
     >
   >
 ): Promise<User> {
@@ -43,6 +46,6 @@ export async function updateReminderSettings(
     .eq("user_id", userId)
     .select()
     .single();
-  if (error) throw new Error(`updateReminderSettings failed: ${error.message}`);
+  if (error) throw new Error(`updateUserSettings failed: ${error.message}`);
   return UserSchema.parse(data);
 }

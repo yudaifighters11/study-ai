@@ -270,6 +270,7 @@ async function handlePost(request: NextRequest) {
         similar_question_blocked: false,
         audio_url: null,
         script_text: null,
+        script_text_ja: null,
         created_at: now,
         updated_at: now,
       };
@@ -418,6 +419,7 @@ async function generateAndInsertQuestionSet(params: {
           similar_question_blocked: false,
           audio_url: null,
           script_text: null,
+          script_text_ja: null,
           created_at: now,
           updated_at: now,
         });

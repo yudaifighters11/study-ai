@@ -47,7 +47,7 @@ export function buildGeneratedQuestionJsonSchema(detailCategories: string[]) {
         choice_a: { type: "string" },
         choice_b: { type: "string" },
         choice_c: { type: "string" },
-        choice_d: { type: "string" },
+        choice_d: { type: ["string", "null"] },
         choice_e: { type: ["string", "null"] },
         choice_f: { type: ["string", "null"] },
         choice_g: { type: ["string", "null"] },
@@ -57,7 +57,7 @@ export function buildGeneratedQuestionJsonSchema(detailCategories: string[]) {
         choice_a_explanation: { type: "string" },
         choice_b_explanation: { type: "string" },
         choice_c_explanation: { type: "string" },
-        choice_d_explanation: { type: "string" },
+        choice_d_explanation: { type: ["string", "null"] },
         choice_e_explanation: { type: ["string", "null"] },
         choice_f_explanation: { type: ["string", "null"] },
         choice_g_explanation: { type: ["string", "null"] },
@@ -119,7 +119,7 @@ export function buildGeneratedQuestionSetJsonSchema(
       choice_a: { type: "string" },
       choice_b: { type: "string" },
       choice_c: { type: "string" },
-      choice_d: { type: "string" },
+      choice_d: { type: ["string", "null"] },
       choice_e: { type: ["string", "null"] },
       choice_f: { type: ["string", "null"] },
       choice_g: { type: ["string", "null"] },
@@ -129,7 +129,7 @@ export function buildGeneratedQuestionSetJsonSchema(
       choice_a_explanation: { type: "string" },
       choice_b_explanation: { type: "string" },
       choice_c_explanation: { type: "string" },
-      choice_d_explanation: { type: "string" },
+      choice_d_explanation: { type: ["string", "null"] },
       choice_e_explanation: { type: ["string", "null"] },
       choice_f_explanation: { type: ["string", "null"] },
       choice_g_explanation: { type: ["string", "null"] },
@@ -279,6 +279,81 @@ export const STUDY_ADVICE_JSON_SCHEMA = {
       advice: { type: "string" },
     },
     required: ["advice"],
+    additionalProperties: false,
+  },
+} as const;
+
+/**
+ * TOEICリスニング Part2(応答問題)新規生成のJSON Schema。選択肢は常に3択(a/b/c)。
+ */
+export function buildGeneratedListeningQuestionJsonSchema() {
+  return {
+    name: "generated_listening_question",
+    strict: true,
+    schema: {
+      type: "object",
+      properties: {
+        question_text: { type: "string" },
+        choice_a: { type: "string" },
+        choice_b: { type: "string" },
+        choice_c: { type: "string" },
+        correct_choice: { type: "string", enum: ["a", "b", "c"] },
+        correct_explanation: { type: "string" },
+        choice_a_explanation: { type: "string" },
+        choice_b_explanation: { type: "string" },
+        choice_c_explanation: { type: "string" },
+        minor_category: { type: "string" },
+        related_terms: { type: "array", items: { type: "string" } },
+        difficulty: { type: "integer" },
+      },
+      required: [
+        "question_text",
+        "choice_a",
+        "choice_b",
+        "choice_c",
+        "correct_choice",
+        "correct_explanation",
+        "choice_a_explanation",
+        "choice_b_explanation",
+        "choice_c_explanation",
+        "minor_category",
+        "related_terms",
+        "difficulty",
+      ],
+      additionalProperties: false,
+    },
+  } as const;
+}
+
+export const LISTENING_VALIDATION_JSON_SCHEMA = {
+  name: "generated_listening_question_validation",
+  strict: true,
+  schema: {
+    type: "object",
+    properties: {
+      is_three_choice_format: { type: "boolean" },
+      has_single_correct_choice: { type: "boolean" },
+      answerable_from_audio_alone: { type: "boolean" },
+      explanation_matches_correct_choice: { type: "boolean" },
+      choice_explanations_consistent: { type: "boolean" },
+      matches_requested_topic: { type: "boolean" },
+      natural_toeic_style_english: { type: "boolean" },
+      no_ambiguous_expressions: { type: "boolean" },
+      passed: { type: "boolean" },
+      issues: { type: "array", items: { type: "string" } },
+    },
+    required: [
+      "is_three_choice_format",
+      "has_single_correct_choice",
+      "answerable_from_audio_alone",
+      "explanation_matches_correct_choice",
+      "choice_explanations_consistent",
+      "matches_requested_topic",
+      "natural_toeic_style_english",
+      "no_ambiguous_expressions",
+      "passed",
+      "issues",
+    ],
     additionalProperties: false,
   },
 } as const;

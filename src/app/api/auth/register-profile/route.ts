@@ -58,6 +58,8 @@ export async function POST(request: NextRequest) {
       review_reminder_threshold_days: 3,
       study_inactivity_threshold_days: 3,
       exam_proximity_threshold_days: 7,
+      listening_show_question_text: true,
+      listening_show_choice_text: true,
       created_at: new Date().toISOString(),
     });
 

@@ -31,7 +31,8 @@ export const QuestionSchema = z.object({
   choice_a: z.string().min(1),
   choice_b: z.string().min(1),
   choice_c: z.string().min(1),
-  choice_d: z.string().min(1),
+  // 3択問題(TOEICリスニングPart2等)ではnull。
+  choice_d: z.string().nullable(),
   choice_e: z.string().nullable(),
   choice_f: z.string().nullable(),
   choice_g: z.string().nullable(),
@@ -45,7 +46,7 @@ export const QuestionSchema = z.object({
   choice_a_explanation: z.string(),
   choice_b_explanation: z.string(),
   choice_c_explanation: z.string(),
-  choice_d_explanation: z.string(),
+  choice_d_explanation: z.string().nullable(),
   choice_e_explanation: z.string().nullable(),
   choice_f_explanation: z.string().nullable(),
   choice_g_explanation: z.string().nullable(),
@@ -77,6 +78,8 @@ export const QuestionSchema = z.object({
   audio_url: z.string().nullable(),
   // リスニング問題のスクリプト(台本)全文。解答後の解説画面でのみ表示する。音声問題以外はnull。
   script_text: z.string().nullable(),
+  // script_textの日本語訳。画面表示機能は未実装(将来用)。
+  script_text_ja: z.string().nullable(),
   created_at: z.string(), // ISO日時
   updated_at: z.string(), // ISO日時
 });
