@@ -45,3 +45,17 @@ export function getValidationModel(): string {
   }
   return model;
 }
+
+/**
+ * リスニング問題の音声合成(TTS)に使用するモデル名。
+ * モデルIDはコードへ直接記載せず、環境変数(OPENAI_TTS_MODEL)で管理する。
+ */
+export function getTtsModel(): string {
+  const model = process.env.OPENAI_TTS_MODEL;
+  if (!model) {
+    throw new Error(
+      "OPENAI_TTS_MODEL が設定されていません。.env.local を確認してください。"
+    );
+  }
+  return model;
+}

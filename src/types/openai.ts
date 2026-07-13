@@ -189,3 +189,51 @@ export const ListeningValidationResponseSchema = z.object({
 export type ListeningValidationResponse = z.infer<
   typeof ListeningValidationResponseSchema
 >;
+
+// TOEICリスニング Part2 類題生成(ミス傾向を踏まえた、元問題ありの生成)のレスポンス。
+// 大中小分類・詳細分類・difficultyは元問題からそのまま引き継ぐため、AIには出力させない。
+export const GeneratedListeningSimilarQuestionResponseSchema = z.object({
+  question_text: z.string().min(1),
+  choice_a: z.string().min(1),
+  choice_b: z.string().min(1),
+  choice_c: z.string().min(1),
+  correct_choice: z.enum(["a", "b", "c"]),
+  correct_explanation: z.string().min(1),
+  choice_a_explanation: z.string().min(1),
+  choice_b_explanation: z.string().min(1),
+  choice_c_explanation: z.string().min(1),
+  question_translation: z.string().min(1),
+  choice_a_translation: z.string().min(1),
+  choice_b_translation: z.string().min(1),
+  choice_c_translation: z.string().min(1),
+  // 音声合成にそのまま使う、質問文+応答A・B・Cの書き起こし(AIが直接作成)
+  script_text: z.string().min(1),
+});
+export type GeneratedListeningSimilarQuestionResponse = z.infer<
+  typeof GeneratedListeningSimilarQuestionResponseSchema
+>;
+
+// TOEICリスニング Part2類題生成問題のチェックのレスポンス。
+export const ListeningSimilarValidationResponseSchema = z.object({
+  is_three_choice_format: z.boolean(),
+  has_single_correct_choice: z.boolean(),
+  answerable_from_audio_alone: z.boolean(),
+  explanation_matches_correct_choice: z.boolean(),
+  choice_explanations_consistent: z.boolean(),
+  // 元問題と同じ聞き取りポイント(detail_category)を維持しているか
+  maintains_original_detail_category: z.boolean(),
+  // 指定されたdifficultyの水準に合っているか
+  matches_difficulty_level: z.boolean(),
+  not_overly_copied_from_original: z.boolean(),
+  // 日本語訳が英文の意味と一致しているか
+  translations_match_meaning: z.boolean(),
+  // script_textが問題文・選択肢と完全に一致しているか
+  script_text_consistent_with_choices: z.boolean(),
+  natural_toeic_style_english: z.boolean(),
+  no_ambiguous_expressions: z.boolean(),
+  passed: z.boolean(),
+  issues: z.array(z.string()),
+});
+export type ListeningSimilarValidationResponse = z.infer<
+  typeof ListeningSimilarValidationResponseSchema
+>;

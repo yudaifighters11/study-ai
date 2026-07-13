@@ -357,3 +357,89 @@ export const LISTENING_VALIDATION_JSON_SCHEMA = {
     additionalProperties: false,
   },
 } as const;
+
+/**
+ * TOEICリスニング Part2 類題生成(元問題ありの、ミス傾向を踏まえた生成)のJSON Schema。
+ * 大中小分類・詳細分類・difficultyは元問題からそのまま引き継ぐため、ここには含めない。
+ */
+export const GENERATED_LISTENING_SIMILAR_QUESTION_JSON_SCHEMA = {
+  name: "generated_listening_similar_question",
+  strict: true,
+  schema: {
+    type: "object",
+    properties: {
+      question_text: { type: "string" },
+      choice_a: { type: "string" },
+      choice_b: { type: "string" },
+      choice_c: { type: "string" },
+      correct_choice: { type: "string", enum: ["a", "b", "c"] },
+      correct_explanation: { type: "string" },
+      choice_a_explanation: { type: "string" },
+      choice_b_explanation: { type: "string" },
+      choice_c_explanation: { type: "string" },
+      question_translation: { type: "string" },
+      choice_a_translation: { type: "string" },
+      choice_b_translation: { type: "string" },
+      choice_c_translation: { type: "string" },
+      script_text: { type: "string" },
+    },
+    required: [
+      "question_text",
+      "choice_a",
+      "choice_b",
+      "choice_c",
+      "correct_choice",
+      "correct_explanation",
+      "choice_a_explanation",
+      "choice_b_explanation",
+      "choice_c_explanation",
+      "question_translation",
+      "choice_a_translation",
+      "choice_b_translation",
+      "choice_c_translation",
+      "script_text",
+    ],
+    additionalProperties: false,
+  },
+} as const;
+
+export const LISTENING_SIMILAR_VALIDATION_JSON_SCHEMA = {
+  name: "generated_listening_similar_question_validation",
+  strict: true,
+  schema: {
+    type: "object",
+    properties: {
+      is_three_choice_format: { type: "boolean" },
+      has_single_correct_choice: { type: "boolean" },
+      answerable_from_audio_alone: { type: "boolean" },
+      explanation_matches_correct_choice: { type: "boolean" },
+      choice_explanations_consistent: { type: "boolean" },
+      maintains_original_detail_category: { type: "boolean" },
+      matches_difficulty_level: { type: "boolean" },
+      not_overly_copied_from_original: { type: "boolean" },
+      translations_match_meaning: { type: "boolean" },
+      script_text_consistent_with_choices: { type: "boolean" },
+      natural_toeic_style_english: { type: "boolean" },
+      no_ambiguous_expressions: { type: "boolean" },
+      passed: { type: "boolean" },
+      issues: { type: "array", items: { type: "string" } },
+    },
+    required: [
+      "is_three_choice_format",
+      "has_single_correct_choice",
+      "answerable_from_audio_alone",
+      "explanation_matches_correct_choice",
+      "choice_explanations_consistent",
+      "maintains_original_detail_category",
+      "matches_difficulty_level",
+      "not_overly_copied_from_original",
+      "translations_match_meaning",
+      "script_text_consistent_with_choices",
+      "natural_toeic_style_english",
+      "no_ambiguous_expressions",
+      "passed",
+      "issues",
+    ],
+    additionalProperties: false,
+  },
+} as const;

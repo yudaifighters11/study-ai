@@ -19,6 +19,10 @@ import {
   validateGeneratedQuestion,
   validateGeneratedQuestionSet,
 } from "@/lib/openai/validateGeneratedQuestion";
+import { generateListeningSimilarQuestion } from "@/lib/openai/generateListeningSimilarQuestion";
+import { validateGeneratedListeningSimilarQuestion } from "@/lib/openai/validateListeningSimilarQuestion";
+import { synthesizeSpeech } from "@/lib/openai/synthesizeSpeech";
+import { uploadListeningAudio } from "@/lib/storage/listeningAudioStorage";
 import { toPublicQuestion } from "@/lib/questionPresenter";
 import { Question } from "@/types/question";
 import { MistakeAnalysisResponse } from "@/types/openai";
@@ -171,6 +175,22 @@ async function handlePost(request: NextRequest) {
       targetMistakeType:
         reusedQuestion.target_mistake_type ?? mistakeAnalysisForPrompt.mistake_type,
       attempts: 0,
+    });
+  }
+
+  // リスニング(TOEIC Part2)は、著作権上実在の過去問音声が使えないため専用の生成処理を使う。
+  // 大中小分類・詳細分類・difficultyは元問題からそのまま引き継ぎ、AIには決めさせない。
+  // category_master(4択・detail_category逆引き前提の仕組み)は使わない。
+  if (originalQuestion.exam_type === "toeic_listening") {
+    const previousListeningQuestions = existingVariants.map((q) => ({
+      question_text: q.question_text,
+    }));
+    return await generateAndInsertListeningSimilarQuestion({
+      originalQuestion,
+      mistakeAnalysisForPrompt,
+      userSelectedChoice: answer.selected_choice,
+      previousSimilarQuestions: previousListeningQuestions,
+      answerId,
     });
   }
 
@@ -455,6 +475,138 @@ async function generateAndInsertQuestionSet(params: {
     {
       error:
         "類題セットの生成に失敗しました(検証不合格が3回続いたため出題できません)。この問題は今後、類題生成の対象から除外されました。",
+    },
+    { status: 422 }
+  );
+}
+
+/**
+ * TOEICリスニング Part2の類題生成・検証・音声合成を行い、questions.csvへ保存する。
+ * 検証に合格したscript_textをOpenAI TTSで音声化し、Supabase Storageへアップロードしてaudio_urlに登録する。
+ * 大中小分類・詳細分類・difficultyは元問題からそのまま引き継ぐ(category_masterは使わない)。
+ */
+async function generateAndInsertListeningSimilarQuestion(params: {
+  originalQuestion: Question;
+  mistakeAnalysisForPrompt: MistakeAnalysisResponse;
+  userSelectedChoice: ChoiceKey;
+  previousSimilarQuestions: { question_text: string }[];
+  answerId: string;
+}): Promise<NextResponse> {
+  const {
+    originalQuestion,
+    mistakeAnalysisForPrompt,
+    userSelectedChoice,
+    previousSimilarQuestions,
+    answerId,
+  } = params;
+
+  let previousIssues: string[] | undefined;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const generated = await generateListeningSimilarQuestion({
+      originalQuestion,
+      mistakeAnalysis: mistakeAnalysisForPrompt,
+      userSelectedChoice,
+      previousSimilarQuestions,
+      previousIssues,
+    });
+
+    const validation = await validateGeneratedListeningSimilarQuestion({
+      generatedQuestion: generated,
+      originalQuestion,
+    });
+
+    if (validation.passed) {
+      const now = new Date().toISOString();
+      const today = format(new Date(), "yyyy-MM-dd");
+      const questionId = uuidv4();
+
+      const audioBuffer = await synthesizeSpeech(generated.script_text);
+      const audioUrl = await uploadListeningAudio(questionId, audioBuffer);
+
+      const scriptTextJa = `質問:${generated.question_translation}\nA. ${generated.choice_a_translation}\nB. ${generated.choice_b_translation}\nC. ${generated.choice_c_translation}`;
+
+      const question: Question = {
+        question_id: questionId,
+        exam_type: originalQuestion.exam_type,
+        question_type: "ai_generated",
+        original_question_id: originalQuestion.question_id,
+        question_text: generated.question_text,
+        passage_text: null,
+        passage_group_id: null,
+        passage_order: null,
+        passage_total_questions: null,
+        choice_a: generated.choice_a,
+        choice_b: generated.choice_b,
+        choice_c: generated.choice_c,
+        choice_d: null,
+        choice_e: null,
+        choice_f: null,
+        choice_g: null,
+        choice_h: null,
+        original_correct_choice: generated.correct_choice,
+        current_correct_choice: generated.correct_choice,
+        original_explanation: generated.correct_explanation,
+        current_explanation: generated.correct_explanation,
+        choice_a_explanation: generated.choice_a_explanation,
+        choice_b_explanation: generated.choice_b_explanation,
+        choice_c_explanation: generated.choice_c_explanation,
+        choice_d_explanation: null,
+        choice_e_explanation: null,
+        choice_f_explanation: null,
+        choice_g_explanation: null,
+        choice_h_explanation: null,
+        major_category: originalQuestion.major_category,
+        middle_category: originalQuestion.middle_category,
+        minor_category: originalQuestion.minor_category,
+        detail_category: originalQuestion.detail_category,
+        related_terms: [],
+        difficulty: originalQuestion.difficulty,
+        target_mistake_type: mistakeAnalysisForPrompt.mistake_type,
+        source_year: new Date().getFullYear(),
+        syllabus_version: originalQuestion.syllabus_version,
+        valid_from: today,
+        valid_until: null,
+        is_current: true,
+        is_current_exam_scope: true,
+        revision_note: "",
+        validation_status: "passed",
+        rule_reference_date: today,
+        similar_question_blocked: false,
+        audio_url: audioUrl,
+        script_text: generated.script_text,
+        script_text_ja: scriptTextJa,
+        created_at: now,
+        updated_at: now,
+      };
+
+      await insertQuestion(question);
+
+      return NextResponse.json({
+        question: toPublicQuestion(question),
+        diffFromOriginal: "",
+        targetMistakeType: mistakeAnalysisForPrompt.mistake_type,
+        attempts: attempt,
+      });
+    }
+
+    console.error(
+      `リスニング類題生成: 検証不合格(${attempt}回目) answerId=${answerId} issues=`,
+      validation.issues
+    );
+    previousIssues = validation.issues;
+  }
+
+  await updateQuestion({
+    ...originalQuestion,
+    similar_question_blocked: true,
+    updated_at: new Date().toISOString(),
+  });
+
+  return NextResponse.json(
+    {
+      error:
+        "類題の生成に失敗しました(検証不合格が3回続いたため出題できません)。この問題は今後、類題生成の対象から除外されました。",
     },
     { status: 422 }
   );

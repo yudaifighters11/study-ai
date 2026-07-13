@@ -22,7 +22,8 @@ const RequestSchema = z.object({
 const MAX_ATTEMPTS = 3;
 
 const LISTENING_EXAM_TYPE = "toeic_listening";
-const LISTENING_MAJOR_CATEGORY = "Part2 応答問題";
+const LISTENING_MAJOR_CATEGORY = "Part 2";
+const LISTENING_MIDDLE_CATEGORY = "応答問題";
 
 /**
  * TOEICリスニング Part2(応答問題)の新規問題を、指定したtopicから生成・検証して保存する。
@@ -58,7 +59,7 @@ async function handlePost(request: NextRequest) {
   // 同じtopicで既に生成済みの問題(場面設定の重複を避けるため、新規生成時のプロンプトに使う)
   const existingQuestions = await getAllQuestions(LISTENING_EXAM_TYPE);
   const previousQuestions: PreviousListeningQuestion[] = existingQuestions
-    .filter((q) => q.middle_category === topic)
+    .filter((q) => q.detail_category === topic)
     .map((q) => ({ question_text: q.question_text }));
 
   let previousIssues: string[] | undefined;
@@ -111,9 +112,9 @@ async function handlePost(request: NextRequest) {
         choice_g_explanation: null,
         choice_h_explanation: null,
         major_category: LISTENING_MAJOR_CATEGORY,
-        middle_category: topic,
+        middle_category: LISTENING_MIDDLE_CATEGORY,
         minor_category: generated.minor_category,
-        detail_category: null,
+        detail_category: topic,
         related_terms: generated.related_terms,
         difficulty: generated.difficulty,
         target_mistake_type: null,
