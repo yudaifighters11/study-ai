@@ -5,10 +5,22 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { WeakPointStats } from "@/lib/analysis/computeWeakPointStats";
 import { HomeReminders } from "@/lib/analysis/computeHomeReminders";
+import { MonthlyStudyStats } from "@/lib/analysis/computeMonthlyStudyStats";
+import { MonthlyGoalProgress } from "@/lib/analysis/computeMonthlyGoalProgress";
 import { MISTAKE_TYPE_LABELS, MistakeType } from "@/types/enums";
 import { RegisteredExam } from "@/lib/examPresenter";
+import { MonthlyStudyGoalType } from "@/types/userExam";
 import { DEFAULT_EXAM_THEME, getExamTheme } from "@/components/examTheme";
 import { AppHeader } from "@/components/AppHeader";
+import { Chip } from "@/components/Chip";
+
+const HOUR_GOAL_OPTIONS = [5, 10, 20, 30, 50, 100];
+const QUESTION_GOAL_OPTIONS = [20, 50, 100, 200, 300, 500];
+
+const GOAL_TYPE_LABELS: Record<MonthlyStudyGoalType, string> = {
+  hours: "時間",
+  questions: "問",
+};
 
 function IconWrapper({
   children,
@@ -94,11 +106,57 @@ function ChevronRightIcon(props: { className?: string }) {
   );
 }
 
+function LightbulbIcon(props: { className?: string }) {
+  return (
+    <IconWrapper {...props}>
+      <path d="M9 18h6M10 21h4" />
+      <path d="M12 3a6 6 0 0 0-3.5 10.9c.5.4.8 1 .8 1.6v.5h5.4v-.5c0-.6.3-1.2.8-1.6A6 6 0 0 0 12 3Z" />
+    </IconWrapper>
+  );
+}
+
 function BellIcon(props: { className?: string }) {
   return (
     <IconWrapper {...props}>
       <path d="M6 9a6 6 0 0 1 12 0c0 4 1.5 5.5 1.5 5.5H4.5S6 13 6 9Z" />
       <path d="M10 18a2 2 0 0 0 4 0" />
+    </IconWrapper>
+  );
+}
+
+function TargetGoalIcon(props: { className?: string }) {
+  return (
+    <IconWrapper {...props}>
+      <circle cx="12" cy="12" r="8" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="12" cy="12" r="0.6" fill="currentColor" />
+    </IconWrapper>
+  );
+}
+
+function ClockIcon(props: { className?: string }) {
+  return (
+    <IconWrapper {...props}>
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 8v4l3 2" />
+    </IconWrapper>
+  );
+}
+
+function TrendUpIcon(props: { className?: string }) {
+  return (
+    <IconWrapper {...props}>
+      <path d="M4 16l5-5 4 4 7-7" />
+      <path d="M14 8h6v6" />
+    </IconWrapper>
+  );
+}
+
+function CheckCircleIcon(props: { className?: string }) {
+  return (
+    <IconWrapper {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M8.5 12.5l2.5 2.5 5-5" />
     </IconWrapper>
   );
 }
@@ -115,14 +173,28 @@ export default function HomePage() {
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState<string | null>(null);
   const [reminders, setReminders] = useState<HomeReminders | null>(null);
+  const [monthlyStudyStats, setMonthlyStudyStats] = useState<MonthlyStudyStats | null>(
+    null
+  );
+  const [monthlyGoalProgress, setMonthlyGoalProgress] =
+    useState<MonthlyGoalProgress | null>(null);
   const [isEditingDate, setIsEditingDate] = useState(false);
+  const [isEditingGoal, setIsEditingGoal] = useState(false);
+  const [goalTypeInput, setGoalTypeInput] = useState<MonthlyStudyGoalType>("hours");
+  const [goalValueInput, setGoalValueInput] = useState<number | null>(null);
+  const [savingGoal, setSavingGoal] = useState(false);
 
   // 集計取得のfetch/パース処理本体(stateの更新は呼び出し側で行う)
   const fetchStats = async () => {
     const res = await fetch("/api/analysis");
     const data = await res.json();
     if (!res.ok) throw new Error(data.error ?? "学習状況の取得に失敗しました");
-    return data as { stats: WeakPointStats; reminders: HomeReminders };
+    return data as {
+      stats: WeakPointStats;
+      reminders: HomeReminders;
+      monthlyStudyStats: MonthlyStudyStats;
+      monthlyGoalProgress: MonthlyGoalProgress | null;
+    };
   };
 
   // 受験予定日の保存後など、明示的な再取得用(読み込み中表示を出す)
@@ -132,6 +204,8 @@ export default function HomePage() {
       const data = await fetchStats();
       setStats(data.stats);
       setReminders(data.reminders);
+      setMonthlyStudyStats(data.monthlyStudyStats);
+      setMonthlyGoalProgress(data.monthlyGoalProgress);
       setStatsError(null);
     } catch (e) {
       setStatsError(e instanceof Error ? e.message : "不明なエラーが発生しました");
@@ -172,6 +246,8 @@ export default function HomePage() {
         const data = await fetchStats();
         setStats(data.stats);
         setReminders(data.reminders);
+        setMonthlyStudyStats(data.monthlyStudyStats);
+        setMonthlyGoalProgress(data.monthlyGoalProgress);
         setStatsError(null);
       } catch (e) {
         setStatsError(e instanceof Error ? e.message : "不明なエラーが発生しました");
@@ -206,8 +282,69 @@ export default function HomePage() {
     }
   };
 
+  const saveGoal = async (type: MonthlyStudyGoalType | null, value: number | null) => {
+    setSavingGoal(true);
+    try {
+      const res = await fetch("/api/user/study-goal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          monthlyStudyGoalType: type,
+          monthlyStudyGoalValue: value,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "保存に失敗しました");
+      setCurrentExam((prev) =>
+        prev
+          ? {
+              ...prev,
+              monthly_study_goal_type: data.userExam.monthly_study_goal_type,
+              monthly_study_goal_value: data.userExam.monthly_study_goal_value,
+            }
+          : prev
+      );
+      setIsEditingGoal(false);
+      await loadStats();
+    } catch {
+      // 失敗した場合は編集状態のまま残し、再入力できるようにする
+    } finally {
+      setSavingGoal(false);
+    }
+  };
+
+  const handleSaveGoal = () => {
+    if (goalValueInput === null) return;
+    void saveGoal(goalTypeInput, goalValueInput);
+  };
+
+  const handleClearGoal = () => {
+    void saveGoal(null, null);
+  };
+
+  const openGoalEditor = () => {
+    setGoalTypeInput((currentExam?.monthly_study_goal_type as MonthlyStudyGoalType) ?? "hours");
+    setGoalValueInput(currentExam?.monthly_study_goal_value ?? null);
+    setIsEditingGoal(true);
+  };
+
   const accuracyPercent = stats ? Math.round(stats.overallAccuracyRate * 100) : 0;
   const weakAreaTop3 = stats?.weakAreaTop3 ?? [];
+  const accuracyCircumference = 2 * Math.PI * 40;
+  const accuracyDashOffset =
+    accuracyCircumference * (1 - accuracyPercent / 100);
+  const topWeakArea = weakAreaTop3[0] ?? null;
+  const topWeakAreaHref = topWeakArea
+    ? `/quiz?${new URLSearchParams(
+        topWeakArea.level === "major"
+          ? { majorCategory: topWeakArea.label }
+          : { middleCategory: topWeakArea.label }
+      ).toString()}`
+    : "/study";
+  // ヒント文はAIを使わないルールベースの定型文(最も苦手な分野を1つ挙げるだけの簡易なもの)
+  const weakAreaHint = topWeakArea
+    ? `「${topWeakArea.label}」の正答率が${Math.round(topWeakArea.accuracyRate * 100)}%と低めです。重点的に復習しましょう。`
+    : null;
   const examTheme = currentExam ? getExamTheme(currentExam.exam_id) : DEFAULT_EXAM_THEME;
   const ExamIcon = examTheme.icon;
   const topMistakeLabel = statsLoading
@@ -220,6 +357,41 @@ export default function HomePage() {
   // 集計読み込み中は「0%」等の実データに見える値を出さず、明確な読み込み中表示にする
   const answeredTodayDisplay = statsLoading ? "…" : `${stats ? stats.answeredToday : 0}問`;
   const accuracyPercentDisplay = statsLoading ? "…" : `${accuracyPercent}%`;
+
+  // 今月の目標(目標が設定されている場合のみホームに表示する)
+  const goalType = currentExam?.monthly_study_goal_type ?? null;
+  const goalTargetValue = currentExam?.monthly_study_goal_value ?? null;
+  const goalUnit = goalType === "questions" ? "問" : "時間";
+  const goalActualValue =
+    goalType === "questions"
+      ? monthlyStudyStats?.questionCount ?? null
+      : monthlyStudyStats
+        ? Number(monthlyStudyStats.hours.toFixed(1))
+        : null;
+  const hasMonthlyGoal =
+    goalType !== null && goalTargetValue !== null && goalActualValue !== null;
+  const projectedValue = monthlyGoalProgress
+    ? Math.round(monthlyGoalProgress.projectedValue * 10) / 10
+    : null;
+  const goalScaleMax = hasMonthlyGoal
+    ? Math.max(goalTargetValue!, projectedValue ?? 0, goalActualValue!) * 1.15
+    : 1;
+  const goalActualPercent = hasMonthlyGoal
+    ? Math.min(((goalActualValue as number) / goalScaleMax) * 100, 100)
+    : 0;
+  const goalTargetPercent = hasMonthlyGoal
+    ? Math.min(((goalTargetValue as number) / goalScaleMax) * 100, 100)
+    : 0;
+  const goalProjectedPercent =
+    hasMonthlyGoal && projectedValue !== null
+      ? Math.min((projectedValue / goalScaleMax) * 100, 100)
+      : null;
+  const formatMonthDay = (isoDate: string) => {
+    const [, month, day] = isoDate.split("-");
+    return `${Number(month)}月${Number(day)}日`;
+  };
+  const goalValueOptions =
+    goalTypeInput === "questions" ? QUESTION_GOAL_OPTIONS : HOUR_GOAL_OPTIONS;
 
   return (
     <div className="flex min-h-screen justify-center bg-gray-100">
@@ -293,6 +465,237 @@ export default function HomePage() {
               </span>
             </button>
 
+            {/* 今月の目標(予測は現在のペースを維持した場合の単純な線形予測)。目標が未設定の場合は設定を促すカードを表示 */}
+            {hasMonthlyGoal && monthlyGoalProgress ? (
+              <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-bold text-gray-900">今月の目標</p>
+                  <div className="flex items-center gap-2">
+                    <p className="flex items-center gap-1 text-xs text-gray-400">
+                      <CalendarIcon className="h-3.5 w-3.5" />
+                      {formatMonthDay(monthlyGoalProgress.monthStart)}〜
+                      {formatMonthDay(monthlyGoalProgress.monthEnd)}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={openGoalEditor}
+                      className="text-xs font-semibold text-blue-600 underline"
+                    >
+                      変更
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                  <div className="flex flex-col items-center gap-1">
+                    <TargetGoalIcon className="h-5 w-5 text-blue-500" />
+                    <p className="text-[11px] text-gray-500">目標</p>
+                    <p className="text-lg font-bold text-gray-900">
+                      {goalTargetValue}
+                      <span className="text-xs font-medium text-gray-500">{goalUnit}</span>
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                    <ClockIcon className="h-5 w-5 text-green-500" />
+                    <p className="text-[11px] text-gray-500">現在</p>
+                    <p className="text-lg font-bold text-gray-900">
+                      {goalActualValue}
+                      <span className="text-xs font-medium text-gray-500">{goalUnit}</span>
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                    <TrendUpIcon className="h-5 w-5 text-purple-500" />
+                    <p className="text-[11px] text-gray-500">予測</p>
+                    <p className="text-lg font-bold text-purple-600">
+                      {projectedValue}
+                      <span className="text-xs font-medium text-gray-500">{goalUnit}</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="relative mt-4 h-2 rounded-full bg-gray-100">
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-full bg-blue-600"
+                    style={{ width: `${goalActualPercent}%` }}
+                  />
+                  <div
+                    className="absolute inset-y-0 w-px border-l border-dashed border-gray-400"
+                    style={{ left: `${goalTargetPercent}%` }}
+                  />
+                  {goalProjectedPercent !== null && (
+                    <div
+                      className="absolute top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full border-2 border-white bg-purple-500 shadow"
+                      style={{ left: `${goalProjectedPercent}%`, marginLeft: "-5px" }}
+                    />
+                  )}
+                </div>
+                <div className="mt-1 flex justify-between text-[10px] text-gray-400">
+                  <span>0{goalUnit}</span>
+                  <span>
+                    {goalTargetValue}
+                    {goalUnit}(目標)
+                  </span>
+                </div>
+
+                <div
+                  className={`mt-3 flex items-center gap-2 rounded-xl p-3 text-sm ${
+                    monthlyGoalProgress.achievable
+                      ? "bg-green-50 text-green-800"
+                      : "bg-orange-50 text-orange-800"
+                  }`}
+                >
+                  <CheckCircleIcon
+                    className={`h-4 w-4 shrink-0 ${
+                      monthlyGoalProgress.achievable ? "text-green-600" : "text-orange-500"
+                    }`}
+                  />
+                  <span>
+                    {monthlyGoalProgress.achievable
+                      ? "達成見込み: このペースなら達成できそうです"
+                      : "このままのペースだと目標に届かない見込みです"}
+                  </span>
+                </div>
+
+                {isEditingGoal && (
+                  <div className="mt-4 flex flex-col gap-3 border-t border-gray-100 pt-3">
+                    <div>
+                      <p className="mb-2 text-xs font-semibold text-gray-500">目標の種類</p>
+                      <div className="flex flex-wrap gap-2">
+                        <Chip
+                          label="時間"
+                          selected={goalTypeInput === "hours"}
+                          onClick={() => {
+                            setGoalTypeInput("hours");
+                            setGoalValueInput(null);
+                          }}
+                        />
+                        <Chip
+                          label="解いた問題数"
+                          selected={goalTypeInput === "questions"}
+                          onClick={() => {
+                            setGoalTypeInput("questions");
+                            setGoalValueInput(null);
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <p className="mb-2 text-xs font-semibold text-gray-500">目標値</p>
+                      <div className="flex flex-wrap gap-2">
+                        {goalValueOptions.map((v) => (
+                          <Chip
+                            key={v}
+                            label={`${v}${GOAL_TYPE_LABELS[goalTypeInput]}`}
+                            selected={goalValueInput === v}
+                            onClick={() => setGoalValueInput(v)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        disabled={goalValueInput === null || savingGoal}
+                        onClick={handleSaveGoal}
+                        className="rounded-full bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {savingGoal ? "保存中..." : "保存"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingGoal(false)}
+                        className="text-xs font-semibold text-gray-500"
+                      >
+                        キャンセル
+                      </button>
+                      <button
+                        type="button"
+                        disabled={savingGoal}
+                        onClick={handleClearGoal}
+                        className="text-xs font-semibold text-red-600 disabled:opacity-40"
+                      >
+                        目標を削除
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </section>
+            ) : (
+              <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-bold text-gray-900">今月の目標</p>
+                  {!isEditingGoal && (
+                    <button
+                      type="button"
+                      onClick={openGoalEditor}
+                      className="text-xs font-semibold text-blue-600 underline"
+                    >
+                      設定する
+                    </button>
+                  )}
+                </div>
+                {!isEditingGoal ? (
+                  <p className="mt-1 text-sm text-gray-400">
+                    今月の学習目標を設定すると、進捗と達成見込みがここに表示されます
+                  </p>
+                ) : (
+                  <div className="mt-3 flex flex-col gap-3">
+                    <div>
+                      <p className="mb-2 text-xs font-semibold text-gray-500">目標の種類</p>
+                      <div className="flex flex-wrap gap-2">
+                        <Chip
+                          label="時間"
+                          selected={goalTypeInput === "hours"}
+                          onClick={() => {
+                            setGoalTypeInput("hours");
+                            setGoalValueInput(null);
+                          }}
+                        />
+                        <Chip
+                          label="解いた問題数"
+                          selected={goalTypeInput === "questions"}
+                          onClick={() => {
+                            setGoalTypeInput("questions");
+                            setGoalValueInput(null);
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <p className="mb-2 text-xs font-semibold text-gray-500">目標値</p>
+                      <div className="flex flex-wrap gap-2">
+                        {goalValueOptions.map((v) => (
+                          <Chip
+                            key={v}
+                            label={`${v}${GOAL_TYPE_LABELS[goalTypeInput]}`}
+                            selected={goalValueInput === v}
+                            onClick={() => setGoalValueInput(v)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        disabled={goalValueInput === null || savingGoal}
+                        onClick={handleSaveGoal}
+                        className="rounded-full bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {savingGoal ? "保存中..." : "保存"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingGoal(false)}
+                        className="text-xs font-semibold text-gray-500"
+                      >
+                        キャンセル
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </section>
+            )}
+
             <div className="grid grid-cols-2 gap-3">
               <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
                 <div className="flex items-center gap-1.5">
@@ -315,50 +718,106 @@ export default function HomePage() {
 
             <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
               <div className="flex items-center gap-1.5">
-                <FlagIcon className="h-3.5 w-3.5 text-gray-400" />
-                <p className="text-xs text-gray-500">苦手分野TOP3</p>
+                <FlagIcon className="h-4 w-4 text-blue-600" />
+                <p className="text-base font-bold text-gray-900">苦手分野TOP3</p>
               </div>
+
               {statsLoading ? (
-                <p className="mt-1 text-sm text-gray-400">読み込み中...</p>
+                <p className="mt-2 text-sm text-gray-400">読み込み中...</p>
               ) : weakAreaTop3.length === 0 ? (
-                <p className="mt-1 text-sm text-gray-400">データ収集中</p>
+                <p className="mt-2 text-sm text-gray-400">データ収集中</p>
               ) : (
-                <ul className="mt-2 flex flex-col gap-2.5">
-                  {weakAreaTop3.map((c, index) => {
-                    const percent = Math.round(c.accuracyRate * 100);
-                    const params = new URLSearchParams(
-                      c.level === "major"
-                        ? { majorCategory: c.label }
-                        : { middleCategory: c.label }
-                    );
-                    return (
-                      <li key={c.label}>
-                        <Link
-                          href={`/quiz?${params.toString()}`}
-                          className="flex items-center gap-2 text-sm"
-                        >
-                          <span className="shrink-0 text-xs font-semibold text-gray-400">
-                            {index + 1}
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="flex items-center justify-between text-gray-900">
-                              <span className="truncate">{c.label}</span>
-                              <span className="shrink-0 text-xs text-gray-500">
-                                {percent}%({c.correctAnswers}/{c.totalAnswers})
+                <>
+                  <p className="mt-1 text-xs text-gray-500">苦手分野を重点的に復習しましょう</p>
+
+                  <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:items-center">
+                    {/* 全体正答率のドーナツグラフ */}
+                    <div className="relative flex h-32 w-32 shrink-0 items-center justify-center">
+                      <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="40"
+                          fill="none"
+                          stroke="#f3f4f6"
+                          strokeWidth="12"
+                        />
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="40"
+                          fill="none"
+                          stroke="#2563eb"
+                          strokeWidth="12"
+                          strokeLinecap="round"
+                          strokeDasharray={accuracyCircumference}
+                          strokeDashoffset={accuracyDashOffset}
+                        />
+                      </svg>
+                      <div className="absolute flex flex-col items-center">
+                        <p className="text-xs text-gray-500">全体正答率</p>
+                        <p className="text-2xl font-bold text-gray-900">
+                          {accuracyPercent}
+                          <span className="text-sm font-medium text-gray-500">%</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <ul className="flex w-full flex-col gap-2.5">
+                      {weakAreaTop3.map((c, index) => {
+                        const percent = Math.round(c.accuracyRate * 100);
+                        const params = new URLSearchParams(
+                          c.level === "major"
+                            ? { majorCategory: c.label }
+                            : { middleCategory: c.label }
+                        );
+                        return (
+                          <li key={c.label}>
+                            <Link
+                              href={`/quiz?${params.toString()}`}
+                              className="flex items-center gap-3 rounded-xl border border-gray-100 p-2.5"
+                            >
+                              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-400 text-sm font-bold text-white">
+                                {index + 1}
                               </span>
-                            </span>
-                            <span className="mt-1 block h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-                              <span
-                                className="block h-full rounded-full bg-orange-400"
-                                style={{ width: `${percent}%` }}
-                              />
-                            </span>
-                          </span>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
+                              <span className="min-w-0 flex-1">
+                                <span className="flex items-center justify-between text-sm">
+                                  <span className="truncate font-bold text-gray-900">
+                                    {c.label}
+                                  </span>
+                                  <span className="shrink-0 text-xs text-gray-500">
+                                    {percent}%({c.correctAnswers}/{c.totalAnswers})
+                                  </span>
+                                </span>
+                                <span className="mt-1.5 block h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                                  <span
+                                    className="block h-full rounded-full bg-orange-400"
+                                    style={{ width: `${percent}%` }}
+                                  />
+                                </span>
+                              </span>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+
+                  {weakAreaHint && (
+                    <div className="mt-4 flex items-start gap-2 rounded-xl bg-blue-50 p-3">
+                      <LightbulbIcon className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
+                      <p className="text-xs text-blue-900">{weakAreaHint}</p>
+                    </div>
+                  )}
+
+                  <Link
+                    href={topWeakAreaHref}
+                    className="mt-4 flex w-full items-center justify-center gap-1 rounded-full bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white"
+                  >
+                    対策を始める
+                    <ChevronRightIcon className="h-4 w-4" />
+                  </Link>
+                </>
               )}
             </section>
 

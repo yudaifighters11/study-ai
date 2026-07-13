@@ -9,8 +9,8 @@ import { getAuthBrowserClient } from "@/lib/supabase/authBrowserClient";
 import { RegisteredExam } from "@/lib/examPresenter";
 
 /**
- * マイページ画面。プロフィール(表示名・ログアウト)、学習目標(今月の目標時間・週間学習日数・受験予定)は実データ・実機能。
- * 復習・学習リマインドの詳細設定は /mypage/reminders に分離。
+ * マイページ画面。プロフィール(表示名・ログアウト)、学習目標(週間学習日数・受験予定)は実データ・実機能。
+ * 今月の目標(時間/問題数の設定含む)はホーム画面に移設。復習・学習リマインドの詳細設定は /mypage/reminders に分離。
  * それ以外(学習中の試験・お知らせ・設定)は仮の値で、
  * 実際の学習データや設定とは連動していない(見た目の骨組みのみのプレースホルダー実装)。
  */
@@ -46,16 +46,6 @@ function PersonIcon(props: { className?: string }) {
   );
 }
 
-function TargetIcon(props: { className?: string }) {
-  return (
-    <IconWrapper {...props}>
-      <circle cx="12" cy="12" r="8" />
-      <circle cx="12" cy="12" r="4" />
-      <circle cx="12" cy="12" r="0.6" fill="currentColor" />
-    </IconWrapper>
-  );
-}
-
 function CalendarIcon(props: { className?: string }) {
   return (
     <IconWrapper {...props}>
@@ -70,6 +60,17 @@ function FlagIcon(props: { className?: string }) {
     <IconWrapper {...props}>
       <path d="M6 20V4" />
       <path d="M6 5h11l-2.5 3.5L17 12H6" />
+    </IconWrapper>
+  );
+}
+
+function TrophyIcon(props: { className?: string }) {
+  return (
+    <IconWrapper {...props}>
+      <path d="M8 4h8v5a4 4 0 0 1-8 0V4Z" />
+      <path d="M8 5H5a3 3 0 0 0 3 5M16 5h3a3 3 0 0 1-3 5" />
+      <path d="M10 15h4v3h-4z" />
+      <path d="M8 20h8" />
     </IconWrapper>
   );
 }
@@ -201,11 +202,10 @@ export default function MyPage() {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [currentExam, setCurrentExam] = useState<RegisteredExam | null>(null);
-  const [monthlyStudyHours, setMonthlyStudyHours] = useState<number | null>(null);
   const [studyDaysThisWeek, setStudyDaysThisWeek] = useState<number | null>(null);
-  const [isEditingGoal, setIsEditingGoal] = useState(false);
-  const [goalInput, setGoalInput] = useState("");
-  const [savingGoal, setSavingGoal] = useState(false);
+  const [isEditingScore, setIsEditingScore] = useState(false);
+  const [targetScoreInput, setTargetScoreInput] = useState("");
+  const [savingScore, setSavingScore] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -226,7 +226,6 @@ export default function MyPage() {
 
         const analysisData = await analysisRes.json();
         if (analysisRes.ok) {
-          setMonthlyStudyHours(analysisData.monthlyStudyHours);
           const recentTrend = analysisData.stats?.recentTrend ?? [];
           setStudyDaysThisWeek(
             recentTrend.filter((d: { totalAnswers: number }) => d.totalAnswers > 0)
@@ -240,35 +239,33 @@ export default function MyPage() {
     void loadStudyGoalData();
   }, []);
 
-  const handleSaveGoal = async () => {
-    setSavingGoal(true);
-    try {
-      const hours = goalInput.trim() ? Number(goalInput) : null;
-      const res = await fetch("/api/user/study-goal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ monthlyStudyGoalHours: hours }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "保存に失敗しました");
-      setCurrentExam((prev) =>
-        prev
-          ? { ...prev, monthly_study_goal_hours: data.userExam.monthly_study_goal_hours }
-          : prev
-      );
-      setIsEditingGoal(false);
-    } catch {
-      // 失敗した場合は編集状態のまま残し、再入力できるようにする
-    } finally {
-      setSavingGoal(false);
-    }
-  };
-
   const handleLogout = async () => {
     setLoggingOut(true);
     await getAuthBrowserClient().auth.signOut();
     router.push("/welcome");
     router.refresh();
+  };
+
+  const handleSaveTargetScore = async () => {
+    setSavingScore(true);
+    try {
+      const targetScore = targetScoreInput.trim() ? Number(targetScoreInput) : null;
+      const res = await fetch("/api/user/target-score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetScore }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "保存に失敗しました");
+      setCurrentExam((prev) =>
+        prev ? { ...prev, target_score: data.userExam.target_score } : prev
+      );
+      setIsEditingScore(false);
+    } catch {
+      // 失敗した場合は編集状態のまま残し、再入力できるようにする
+    } finally {
+      setSavingScore(false);
+    }
   };
 
   return (
@@ -320,59 +317,10 @@ export default function MyPage() {
             </div>
           </Card>
 
-          {/* 学習目標(実データ・実機能。今月の目標時間は現在選択中の試験ごとに設定可能) */}
+          {/* 学習目標(実データ・実機能。今月の目標の設定はホーム画面に移設) */}
           <Card>
             <CardTitle>学習目標</CardTitle>
             <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="flex flex-col items-center gap-1">
-                <span className="flex items-center gap-1 text-[11px] text-gray-500">
-                  <TargetIcon className="h-3.5 w-3.5" />
-                  今月の目標
-                </span>
-                <p className="text-lg font-bold text-gray-900">
-                  {monthlyStudyHours !== null ? monthlyStudyHours.toFixed(1) : "…"}
-                  <span className="text-xs font-medium text-gray-500">時間</span>
-                </p>
-                {!isEditingGoal ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setGoalInput(
-                        currentExam?.monthly_study_goal_hours != null
-                          ? String(currentExam.monthly_study_goal_hours)
-                          : ""
-                      );
-                      setIsEditingGoal(true);
-                    }}
-                    className="text-[11px] text-blue-600 underline"
-                  >
-                    /{" "}
-                    {currentExam?.monthly_study_goal_hours != null
-                      ? `${currentExam.monthly_study_goal_hours}時間`
-                      : "未設定"}
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      min={1}
-                      max={500}
-                      value={goalInput}
-                      onChange={(e) => setGoalInput(e.target.value)}
-                      placeholder="時間"
-                      className="w-14 rounded border border-gray-300 px-1 py-0.5 text-xs"
-                    />
-                    <button
-                      type="button"
-                      disabled={savingGoal}
-                      onClick={() => void handleSaveGoal()}
-                      className="text-[11px] font-semibold text-blue-600 disabled:opacity-50"
-                    >
-                      {savingGoal ? "…" : "保存"}
-                    </button>
-                  </div>
-                )}
-              </div>
               <div className="flex flex-col items-center gap-1">
                 <span className="flex items-center gap-1 text-[11px] text-gray-500">
                   <CalendarIcon className="h-3.5 w-3.5" />
@@ -393,6 +341,62 @@ export default function MyPage() {
                   {currentExam?.planned_exam_date ?? "未設定"}
                 </p>
                 <p className="text-[11px] text-gray-400">{currentExam?.name ?? "-"}</p>
+              </div>
+              <div className="flex flex-col items-center gap-1">
+                <span className="flex items-center gap-1 text-[11px] text-gray-500">
+                  <TrophyIcon className="h-3.5 w-3.5" />
+                  目標スコア
+                </span>
+                {!isEditingScore ? (
+                  <>
+                    <p className="text-lg font-bold text-gray-900">
+                      {currentExam?.target_score ?? "未設定"}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTargetScoreInput(
+                          currentExam?.target_score != null
+                            ? String(currentExam.target_score)
+                            : ""
+                        );
+                        setIsEditingScore(true);
+                      }}
+                      className="text-[11px] text-blue-600 underline"
+                    >
+                      変更
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center gap-1">
+                    <input
+                      type="number"
+                      min={1}
+                      max={10000}
+                      value={targetScoreInput}
+                      onChange={(e) => setTargetScoreInput(e.target.value)}
+                      placeholder="例: 800"
+                      className="w-20 rounded border border-gray-300 px-1 py-0.5 text-center text-xs"
+                    />
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={savingScore}
+                        onClick={() => void handleSaveTargetScore()}
+                        className="text-[11px] font-semibold text-blue-600 disabled:opacity-50"
+                      >
+                        {savingScore ? "…" : "保存"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingScore(false)}
+                        className="text-[11px] text-gray-500"
+                      >
+                        キャンセル
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </Card>

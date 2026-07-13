@@ -7,7 +7,8 @@ import { getMistakeAnalysesByUser } from "@/lib/csv/mistakeAnalysisRepository";
 import { getQuestionsForFiltering } from "@/lib/csv/questionRepository";
 import { computeWeakPointStats } from "@/lib/analysis/computeWeakPointStats";
 import { computeHomeReminders } from "@/lib/analysis/computeHomeReminders";
-import { computeMonthlyStudyHours } from "@/lib/analysis/computeMonthlyStudyHours";
+import { computeMonthlyStudyStats } from "@/lib/analysis/computeMonthlyStudyStats";
+import { computeMonthlyGoalProgress } from "@/lib/analysis/computeMonthlyGoalProgress";
 import { toErrorResponse } from "@/lib/apiErrorHandler";
 
 /**
@@ -61,9 +62,22 @@ export async function GET() {
       examProximityThresholdDays: user?.exam_proximity_threshold_days ?? 7,
     });
 
-    const monthlyStudyHours = computeMonthlyStudyHours(scopedAnswerHistory);
+    const monthlyStudyStats = computeMonthlyStudyStats(scopedAnswerHistory);
 
-    return NextResponse.json({ stats, reminders, monthlyStudyHours });
+    // 今月の目標が設定されている場合のみ、現在のペースに基づく月末予測を計算する
+    let monthlyGoalProgress = null;
+    if (currentExam.monthly_study_goal_type && currentExam.monthly_study_goal_value != null) {
+      const actualValue =
+        currentExam.monthly_study_goal_type === "questions"
+          ? monthlyStudyStats.questionCount
+          : monthlyStudyStats.hours;
+      monthlyGoalProgress = computeMonthlyGoalProgress(
+        actualValue,
+        currentExam.monthly_study_goal_value
+      );
+    }
+
+    return NextResponse.json({ stats, reminders, monthlyStudyStats, monthlyGoalProgress });
   } catch (error) {
     return toErrorResponse(error);
   }

@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+// マイページ「今月の目標」の指標の種類。
+export const MonthlyStudyGoalTypeSchema = z.enum(["hours", "questions"]);
+export type MonthlyStudyGoalType = z.infer<typeof MonthlyStudyGoalTypeSchema>;
+
 /**
  * user_exams.csv の1行に対応するドメインモデル。
  * ユーザーが学習対象として登録した試験ごとの状態(現在選択中か、受験予定日、対象シラバス等)を保持する。
@@ -15,8 +19,10 @@ export const UserExamSchema = z.object({
   target_syllabus_version: z.string().nullable(),
   // 目標スコアまたは目標点。未設定(未定)の場合はnull。
   target_score: z.number().nullable(),
-  // マイページ「学習目標」の今月の目標学習時間(時間単位)。未設定の場合はnull。
-  monthly_study_goal_hours: z.number().nullable(),
+  // マイページ「学習目標」の今月の目標値。単位はmonthly_study_goal_typeに依存(時間 or 問題数)。未設定の場合はnull。
+  monthly_study_goal_value: z.number().nullable(),
+  // 今月の目標の指標の種類(時間 or 問題数)。未設定の場合はnull。
+  monthly_study_goal_type: MonthlyStudyGoalTypeSchema.nullable(),
   registered_at: z.string(), // ISO日時
   // この試験で最後に問題に回答した日時。未回答の場合はnull。「最近学習した試験」の判定に使う。
   last_studied_at: z.string().nullable(),

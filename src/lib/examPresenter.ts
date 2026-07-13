@@ -1,5 +1,5 @@
 import { Exam } from "@/types/exam";
-import { UserExam } from "@/types/userExam";
+import { MonthlyStudyGoalType, UserExam } from "@/types/userExam";
 
 /**
  * ユーザーが学習対象として登録した試験を、画面表示用にExamカタログ情報とUserExamの状態を合成した形にする。
@@ -15,7 +15,10 @@ export interface RegisteredExam {
   // falseの場合、target_syllabus_versionは常にnullのままでよく、受験予定日がなくても出題可能とする。
   has_syllabus: boolean;
   last_studied_at: string | null;
-  monthly_study_goal_hours: number | null;
+  monthly_study_goal_value: number | null;
+  monthly_study_goal_type: MonthlyStudyGoalType | null;
+  // 目標スコアまたは目標点。未設定の場合はnull。
+  target_score: number | null;
 }
 
 export function toRegisteredExam(
@@ -32,6 +35,8 @@ export function toRegisteredExam(
     target_syllabus_version: userExam.target_syllabus_version,
     has_syllabus: hasSyllabus,
     last_studied_at: userExam.last_studied_at,
-    monthly_study_goal_hours: userExam.monthly_study_goal_hours,
+    monthly_study_goal_value: userExam.monthly_study_goal_value,
+    monthly_study_goal_type: userExam.monthly_study_goal_type,
+    target_score: userExam.target_score,
   };
 }

@@ -1,22 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthenticatedUserId } from "@/lib/supabase/authServerClient";
-import { updateCurrentExamStudyGoal } from "@/lib/csv/userExamRepository";
-import { MonthlyStudyGoalTypeSchema } from "@/types/userExam";
+import { updateCurrentExamTargetScore } from "@/lib/csv/userExamRepository";
 import { toErrorResponse } from "@/lib/apiErrorHandler";
 
-const RequestSchema = z
-  .object({
-    monthlyStudyGoalType: MonthlyStudyGoalTypeSchema.nullable(),
-    monthlyStudyGoalValue: z.number().int().min(1).max(2000).nullable(),
-  })
-  .refine(
-    (v) => (v.monthlyStudyGoalType === null) === (v.monthlyStudyGoalValue === null),
-    { message: "種類と値は両方指定するか、両方未設定にしてください" }
-  );
+const RequestSchema = z.object({
+  targetScore: z.number().int().min(1).max(10000).nullable(),
+});
 
 /**
- * マイページ「学習目標」の今月の目標(種類・値)の設定・変更。
+ * マイページの現在選択中の試験に対する目標スコア・目標点の設定・変更。
  */
 export async function POST(request: NextRequest) {
   try {
@@ -34,11 +27,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "ログインが必要です" }, { status: 401 });
     }
 
-    const updated = await updateCurrentExamStudyGoal(
-      userId,
-      parsed.data.monthlyStudyGoalType,
-      parsed.data.monthlyStudyGoalValue
-    );
+    const updated = await updateCurrentExamTargetScore(userId, parsed.data.targetScore);
 
     return NextResponse.json({ userExam: updated });
   } catch (error) {
