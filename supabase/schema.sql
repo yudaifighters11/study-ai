@@ -161,6 +161,8 @@ create table questions (
   ),
   rule_reference_date date not null,
   similar_question_blocked boolean not null default false,
+  audio_url text,
+  script_text text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

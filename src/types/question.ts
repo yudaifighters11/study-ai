@@ -73,6 +73,10 @@ export const QuestionSchema = z.object({
   // この問題からの類題生成が(検証不合格3回連続で)自動的にブロックされているか。
   // 手動でfalseに戻せば再度類題生成を試みられる。
   similar_question_blocked: z.boolean(),
+  // リスニング問題の音声ファイルURL(Supabase Storage等)。音声問題以外はnull。
+  audio_url: z.string().nullable(),
+  // リスニング問題のスクリプト(台本)全文。解答後の解説画面でのみ表示する。音声問題以外はnull。
+  script_text: z.string().nullable(),
   created_at: z.string(), // ISO日時
   updated_at: z.string(), // ISO日時
 });

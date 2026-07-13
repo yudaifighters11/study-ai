@@ -268,6 +268,8 @@ async function handlePost(request: NextRequest) {
         validation_status: "passed",
         rule_reference_date: generated.rule_reference_date,
         similar_question_blocked: false,
+        audio_url: null,
+        script_text: null,
         created_at: now,
         updated_at: now,
       };
@@ -414,6 +416,8 @@ async function generateAndInsertQuestionSet(params: {
           validation_status: "passed",
           rule_reference_date: generatedSet.rule_reference_date,
           similar_question_blocked: false,
+          audio_url: null,
+          script_text: null,
           created_at: now,
           updated_at: now,
         });
