@@ -14,6 +14,10 @@ export const OccupationSchema = z.enum([
 ]);
 export type Occupation = z.infer<typeof OccupationSchema>;
 
+// プラン(決済機能は未実装。現時点ではマイページの簡易トグルで手動切り替えする)。
+export const PlanSchema = z.enum(["free", "paid"]);
+export type Plan = z.infer<typeof PlanSchema>;
+
 /**
  * users.csv の1行に対応するドメインモデル。
  * 学習対象の試験・受験予定日・目標スコア・対象シラバスは、複数試験に対応するため user_exams.csv (UserExam) 側で管理する。
@@ -40,6 +44,8 @@ export const UserSchema = z.object({
   listening_show_question_text: z.boolean(),
   // リスニング問題で、問の文(3つの応答選択肢の文)を表示するか
   listening_show_choice_text: z.boolean(),
+  // AI類題生成など、有料プラン限定機能の利用可否。決済機能は未実装。
+  plan: PlanSchema,
   created_at: z.string(), // ISO日時
 });
 

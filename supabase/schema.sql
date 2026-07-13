@@ -31,6 +31,8 @@ create table users (
   exam_proximity_threshold_days integer not null default 7,
   listening_show_question_text boolean not null default true,
   listening_show_choice_text boolean not null default true,
+  -- 決済機能はまだ実装していないため、マイページの簡易トグルで手動切り替えする。
+  plan text not null default 'free' check (plan in ('free', 'paid')),
   created_at timestamptz not null default now()
 );
 

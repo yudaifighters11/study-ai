@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthenticatedUserId } from "@/lib/supabase/authServerClient";
 import { updateUserSettings } from "@/lib/csv/userRepository";
+import { PlanSchema } from "@/types/user";
 import { toErrorResponse } from "@/lib/apiErrorHandler";
 
 const RequestSchema = z
@@ -13,6 +14,8 @@ const RequestSchema = z
     examProximityThresholdDays: z.number().int().min(1).max(60).optional(),
     listeningShowQuestionText: z.boolean().optional(),
     listeningShowChoiceText: z.boolean().optional(),
+    // 決済機能は未実装のため、マイページの簡易トグルから直接切り替えられるようにしている。
+    plan: PlanSchema.optional(),
   })
   .refine((v) => Object.values(v).some((value) => value !== undefined), {
     message: "更新項目がありません",
@@ -58,6 +61,9 @@ export async function POST(request: NextRequest) {
       }),
       ...(parsed.data.listeningShowChoiceText !== undefined && {
         listening_show_choice_text: parsed.data.listeningShowChoiceText,
+      }),
+      ...(parsed.data.plan !== undefined && {
+        plan: parsed.data.plan,
       }),
     });
 

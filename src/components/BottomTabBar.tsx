@@ -89,7 +89,8 @@ export function BottomTabBar() {
   const pathname = usePathname();
 
   // 未ログイン時の画面(初期画面・ログイン/新規登録画面)はアプリのナビゲーションを持たないため表示しない。
-  if (pathname === "/welcome" || pathname === "/login") {
+  // /planはサインアップ直後に必ず選ばせる画面のため、タブ経由での離脱を防ぐ意味でも表示しない。
+  if (pathname === "/welcome" || pathname === "/login" || pathname === "/plan") {
     return null;
   }
 

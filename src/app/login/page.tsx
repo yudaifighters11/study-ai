@@ -124,6 +124,11 @@ function LoginPageContent() {
         if (!res.ok) {
           throw new Error(resData.error ?? "プロフィールの作成に失敗しました");
         }
+
+        // サインアップ直後は、必ずプラン選択画面を通ってからホームへ進む。
+        router.push("/plan");
+        router.refresh();
+        return;
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,

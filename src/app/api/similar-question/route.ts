@@ -7,6 +7,7 @@ import {
   getAnswerHistoryByUser,
 } from "@/lib/csv/answerHistoryRepository";
 import { getMistakeAnalysisByAnswerId } from "@/lib/csv/mistakeAnalysisRepository";
+import { getUserById } from "@/lib/csv/userRepository";
 import { getAllQuestions, getQuestionById, insertQuestion, updateQuestion } from "@/lib/csv/questionRepository";
 import { getAllSyllabusVersions } from "@/lib/csv/syllabusRepository";
 import { findCategoryByDetail, resolveQuestionSetSize } from "@/lib/csv/categoryMasterRepository";
@@ -60,6 +61,15 @@ async function handlePost(request: NextRequest) {
   const userId = await getAuthenticatedUserId();
   if (!userId) {
     return NextResponse.json({ error: "ログインが必要です" }, { status: 401 });
+  }
+
+  // AI類題生成は有料プラン限定機能(決済機能は未実装、マイページの簡易トグルで手動切り替え)。
+  const currentUser = await getUserById(userId);
+  if (!currentUser || currentUser.plan !== "paid") {
+    return NextResponse.json(
+      { error: "類題生成は有料プランでご利用いただけます" },
+      { status: 403 }
+    );
   }
 
   const answer = await getAnswerHistoryById(answerId);

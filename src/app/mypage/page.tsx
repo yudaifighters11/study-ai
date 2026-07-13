@@ -195,6 +195,7 @@ const SETTINGS_ROWS = [
 interface CurrentUser {
   display_name: string;
   email: string | null;
+  plan: "free" | "paid";
 }
 
 export default function MyPage() {
@@ -435,6 +436,25 @@ export default function MyPage() {
                 <ToggleSwitch checked={false} />
               </div>
             </div>
+          </Card>
+
+          {/* プラン(決済機能は未実装。動作確認用の簡易切り替え) */}
+          <Card>
+            <CardTitle>プラン</CardTitle>
+            <Link href="/plan?from=mypage" className="flex items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200">
+                <TrophyIcon className="h-4 w-4 text-gray-500" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-gray-900">
+                  {user?.plan === "paid" ? "プレミアムプラン利用中" : "無料プラン利用中"}
+                </p>
+                <p className="text-[11px] text-gray-500">
+                  プランを変更する
+                </p>
+              </div>
+              <ChevronRightIcon className="h-4 w-4 text-gray-300" />
+            </Link>
           </Card>
 
           {/* 設定(仮のリンク、遷移なし) */}
