@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { startQuizSession } from "@/lib/quizSession";
 import { RegisteredExam } from "@/lib/examPresenter";
-import { DEFAULT_EXAM_THEME, getExamTheme } from "@/components/examTheme";
 import { Chip } from "@/components/Chip";
 import { AppHeader } from "@/components/AppHeader";
+import { RecentExamTabs } from "@/components/RecentExamTabs";
 import type { CategoryMajorOption } from "@/app/api/categories/route";
 
 const QUESTION_COUNT_OPTIONS = [5, 10, 15, 20, 30];
@@ -50,14 +50,6 @@ function TagIcon(props: { className?: string }) {
     <MenuIcon className={props.className}>
       <path d="M11 3H5a2 2 0 0 0-2 2v6a1 1 0 0 0 .3.7l9 9a1 1 0 0 0 1.4 0l6-6a1 1 0 0 0 0-1.4l-9-9A1 1 0 0 0 11 3Z" />
       <path d="M7.5 7.5h.01" />
-    </MenuIcon>
-  );
-}
-
-function ChevronDownIcon(props: { className?: string }) {
-  return (
-    <MenuIcon className={props.className}>
-      <path d="M6 9l6 6 6-6" />
     </MenuIcon>
   );
 }
@@ -109,6 +101,7 @@ const OTHER_MENU_ITEMS = [
 export default function StudyMenuPage() {
   const router = useRouter();
   const [currentExam, setCurrentExam] = useState<RegisteredExam | null>(null);
+  const [registeredExams, setRegisteredExams] = useState<RegisteredExam[]>([]);
   const [loading, setLoading] = useState(true);
   const [questionCount, setQuestionCount] = useState(10);
   const [categories, setCategories] = useState<CategoryMajorOption[]>([]);
@@ -119,23 +112,41 @@ export default function StudyMenuPage() {
   // 難易度は複数選択可のため配列で保持する。空配列 = すべて。
   const [difficulty, setDifficulty] = useState<string[]>([]);
 
+  const loadCategories = async () => {
+    const categoriesRes = await fetch("/api/categories");
+    const categoriesData = await categoriesRes.json();
+    if (categoriesRes.ok) setCategories(categoriesData.categories);
+  };
+
   useEffect(() => {
     const load = async () => {
       try {
-        const [examRes, categoriesRes] = await Promise.all([
-          fetch("/api/user/exams"),
-          fetch("/api/categories"),
-        ]);
+        const [examRes] = await Promise.all([fetch("/api/user/exams"), loadCategories()]);
         const examData = await examRes.json();
-        if (examRes.ok) setCurrentExam(examData.current);
-        const categoriesData = await categoriesRes.json();
-        if (categoriesRes.ok) setCategories(categoriesData.categories);
+        if (examRes.ok) {
+          setCurrentExam(examData.current);
+          setRegisteredExams(examData.registered ?? []);
+        }
       } finally {
         setLoading(false);
       }
     };
     void load();
   }, []);
+
+  // 「最近使った」タブで試験を切り替えたときの反映(分野・小分類等の選択肢も切り替え後の試験に合わせて再取得する)。
+  const handleExamSwitched = (
+    newCurrent: RegisteredExam,
+    updatedRegistered: RegisteredExam[]
+  ) => {
+    setCurrentExam(newCurrent);
+    setRegisteredExams(updatedRegistered);
+    setMajorCategory(ALL_VALUE);
+    setMiddleCategory(ALL_VALUE);
+    setMinorCategory(ALL_VALUE);
+    setDetailCategory(ALL_VALUE);
+    void loadCategories();
+  };
 
   const selectedMajor = categories.find((c) => c.majorCategory === majorCategory);
   const middleOptions = selectedMajor?.middles ?? [];
@@ -152,9 +163,6 @@ export default function StudyMenuPage() {
       : true
     : false;
 
-  const examTheme = currentExam ? getExamTheme(currentExam.exam_id) : DEFAULT_EXAM_THEME;
-  const ExamIcon = examTheme.icon;
-
   return (
     <div className="flex min-h-screen justify-center bg-gray-100">
       <div className="flex w-full max-w-[430px] md:max-w-2xl flex-col border-x border-gray-200 bg-gray-50">
@@ -162,16 +170,11 @@ export default function StudyMenuPage() {
 
         <main className="flex flex-col gap-4 p-4 md:p-6">
           {!loading && currentExam && (
-            <Link
-              href="/exam-select"
-              className="flex w-fit min-w-0 items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1.5"
-            >
-              <ExamIcon className={`h-5 w-5 shrink-0 ${examTheme.fg}`} />
-              <p className="truncate text-base font-bold text-gray-900">
-                {currentExam.name}
-              </p>
-              <ChevronDownIcon className="h-4 w-4 shrink-0 text-gray-400" />
-            </Link>
+            <RecentExamTabs
+              currentExam={currentExam}
+              registeredExams={registeredExams}
+              onSwitched={handleExamSwitched}
+            />
           )}
 
           <div className="flex flex-col gap-3">

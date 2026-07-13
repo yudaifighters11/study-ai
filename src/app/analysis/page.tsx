@@ -12,8 +12,8 @@ import {
 } from "@/lib/analysis/computeWeakPointStats";
 import { MISTAKE_TYPE_LABELS, MistakeType } from "@/types/enums";
 import { RegisteredExam } from "@/lib/examPresenter";
-import { DEFAULT_EXAM_THEME, getExamTheme } from "@/components/examTheme";
 import { AppHeader } from "@/components/AppHeader";
+import { RecentExamTabs } from "@/components/RecentExamTabs";
 
 interface AnalysisResponse {
   stats: WeakPointStats;
@@ -47,14 +47,6 @@ function IconWrapper({
     >
       {children}
     </svg>
-  );
-}
-
-function ChevronDownIcon(props: { className?: string }) {
-  return (
-    <IconWrapper {...props}>
-      <path d="M6 9l6 6 6-6" />
-    </IconWrapper>
   );
 }
 
@@ -104,22 +96,51 @@ function TargetIcon(props: { className?: string }) {
 export default function AnalysisPage() {
   const router = useRouter();
   const [currentExam, setCurrentExam] = useState<RegisteredExam | null>(null);
-  const [otherExams, setOtherExams] = useState<RegisteredExam[]>([]);
+  const [registeredExams, setRegisteredExams] = useState<RegisteredExam[]>([]);
   const [data, setData] = useState<AnalysisResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [advice, setAdvice] = useState<AdviceResponse | null>(null);
   const [adviceLoading, setAdviceLoading] = useState(true);
 
+  // 弱点分析の集計(試験ごとの集計のため、切り替え後の再取得にも使う)
+  const loadAnalysisData = async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const analysisRes = await fetch("/api/analysis");
+      const analysisData = await analysisRes.json();
+      if (!analysisRes.ok) throw new Error(analysisData.error ?? "弱点分析の取得に失敗しました");
+      setData(analysisData);
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : "不明なエラーが発生しました");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // AIアドバイスは集計とは別リクエストにし、失敗・遅延が他のセクションに影響しないようにする
+  const loadAdvice = async () => {
+    setAdviceLoading(true);
+    try {
+      const res = await fetch("/api/analysis/advice");
+      const adviceData = await res.json();
+      if (!res.ok) throw new Error(adviceData.error ?? "学習アドバイスの取得に失敗しました");
+      setAdvice(adviceData);
+    } catch (e) {
+      setAdvice({
+        advice: null,
+        adviceError: e instanceof Error ? e.message : "不明なエラーが発生しました",
+      });
+    } finally {
+      setAdviceLoading(false);
+    }
+  };
+
   useEffect(() => {
     const load = async () => {
-      setLoading(true);
-      setLoadError(null);
       try {
-        const [examRes, analysisRes] = await Promise.all([
-          fetch("/api/user/exams"),
-          fetch("/api/analysis"),
-        ]);
+        const examRes = await fetch("/api/user/exams");
         const examData = await examRes.json();
         if (!examRes.ok) throw new Error(examData.error ?? "現在の試験の取得に失敗しました");
         if (!examData.current) {
@@ -127,35 +148,11 @@ export default function AnalysisPage() {
           return;
         }
         setCurrentExam(examData.current);
-        setOtherExams(
-          (examData.registered as RegisteredExam[]).filter((r) => !r.is_current)
-        );
-
-        const analysisData = await analysisRes.json();
-        if (!analysisRes.ok) throw new Error(analysisData.error ?? "弱点分析の取得に失敗しました");
-        setData(analysisData);
+        setRegisteredExams(examData.registered ?? []);
+        await loadAnalysisData();
       } catch (e) {
         setLoadError(e instanceof Error ? e.message : "不明なエラーが発生しました");
-      } finally {
         setLoading(false);
-      }
-    };
-
-    // AIアドバイスは集計とは別リクエストにし、失敗・遅延が他のセクションに影響しないようにする
-    const loadAdvice = async () => {
-      setAdviceLoading(true);
-      try {
-        const res = await fetch("/api/analysis/advice");
-        const adviceData = await res.json();
-        if (!res.ok) throw new Error(adviceData.error ?? "学習アドバイスの取得に失敗しました");
-        setAdvice(adviceData);
-      } catch (e) {
-        setAdvice({
-          advice: null,
-          adviceError: e instanceof Error ? e.message : "不明なエラーが発生しました",
-        });
-      } finally {
-        setAdviceLoading(false);
       }
     };
 
@@ -164,8 +161,17 @@ export default function AnalysisPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const examTheme = currentExam ? getExamTheme(currentExam.exam_id) : DEFAULT_EXAM_THEME;
-  const ExamIcon = examTheme.icon;
+  // 「最近使った」タブで試験を切り替えたときの反映(集計・アドバイスも切り替え後の試験に合わせて再取得する)。
+  const handleExamSwitched = (
+    newCurrent: RegisteredExam,
+    updatedRegistered: RegisteredExam[]
+  ) => {
+    setCurrentExam(newCurrent);
+    setRegisteredExams(updatedRegistered);
+    void loadAnalysisData();
+    void loadAdvice();
+  };
+
   const stats = data?.stats ?? null;
   const weakAreaTop3 = stats?.weakAreaTop3 ?? [];
 
@@ -189,15 +195,11 @@ export default function AnalysisPage() {
           <p className="p-4 text-sm text-red-600">{loadError ?? "データがありません"}</p>
         ) : (
           <main className="flex flex-col gap-4 p-4 md:p-6">
-            {/* 現在選択中の試験(切り替えは既存の試験選択画面へ遷移するのみ) */}
-            <Link
-              href="/exam-select"
-              className="flex w-fit min-w-0 items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1.5"
-            >
-              <ExamIcon className={`h-5 w-5 shrink-0 ${examTheme.fg}`} />
-              <p className="truncate text-base font-bold text-gray-900">{currentExam.name}</p>
-              <ChevronDownIcon className="h-4 w-4 shrink-0 text-gray-400" />
-            </Link>
+            <RecentExamTabs
+              currentExam={currentExam}
+              registeredExams={registeredExams}
+              onSwitched={handleExamSwitched}
+            />
 
             {stats.totalAnswers === 0 ? (
               <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -316,28 +318,6 @@ export default function AnalysisPage() {
                   </div>
                 </section>
 
-                {/* 他の試験 */}
-                {otherExams.length > 0 && (
-                  <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                    <p className="text-xs text-gray-500">他の試験</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {otherExams.map((exam) => {
-                        const theme = getExamTheme(exam.exam_id);
-                        const OtherIcon = theme.icon;
-                        return (
-                          <Link
-                            key={exam.exam_id}
-                            href="/exam-select"
-                            className="flex items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1.5 text-sm text-gray-700"
-                          >
-                            <OtherIcon className={`h-4 w-4 ${theme.fg}`} />
-                            {exam.name}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </section>
-                )}
 
                 {/* ここから既存の詳細セクション(セクション7-5で必須の項目) */}
                 <Section title="論点別正答率(正答率が低い順)">

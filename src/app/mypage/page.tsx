@@ -9,10 +9,10 @@ import { getAuthBrowserClient } from "@/lib/supabase/authBrowserClient";
 import { RegisteredExam } from "@/lib/examPresenter";
 
 /**
- * マイページ画面。プロフィール(表示名・ログアウト)、学習目標(週間学習日数・受験予定)は実データ・実機能。
+ * マイページ画面。プロフィール(表示名・ログアウト)、学習目標(週間学習日数・受験予定)、
+ * 学習中の試験(10問以上解いた試験のみ表示)は実データ・実機能。
  * 今月の目標(時間/問題数の設定含む)はホーム画面に移設。復習・学習リマインドの詳細設定は /mypage/reminders に分離。
- * それ以外(学習中の試験・お知らせ・設定)は仮の値で、
- * 実際の学習データや設定とは連動していない(見た目の骨組みのみのプレースホルダー実装)。
+ * それ以外(お知らせ・設定)は仮の値で、実際の設定とは連動していない(見た目の骨組みのみのプレースホルダー実装)。
  */
 
 function IconWrapper({
@@ -179,12 +179,6 @@ function CardTitle({ children }: { children: React.ReactNode }) {
   return <p className="text-sm font-bold text-gray-900">{children}</p>;
 }
 
-const STUDYING_EXAMS = [
-  { examId: "it_passport", name: "ITパスポート" },
-  { examId: "fe", name: "基本情報技術者" },
-  { examId: "toeic_reading", name: "TOEIC" },
-];
-
 const SETTINGS_ROWS = [
   { icon: PersonIcon, label: "アカウント" },
   { icon: SunIcon, label: "表示設定" },
@@ -207,6 +201,13 @@ export default function MyPage() {
   const [isEditingScore, setIsEditingScore] = useState(false);
   const [targetScoreInput, setTargetScoreInput] = useState("");
   const [savingScore, setSavingScore] = useState(false);
+  const [isEditingDate, setIsEditingDate] = useState(false);
+  const [plannedExamDateInput, setPlannedExamDateInput] = useState("");
+  const [savingDate, setSavingDate] = useState(false);
+  const [dateError, setDateError] = useState<string | null>(null);
+  const [studyingExams, setStudyingExams] = useState<
+    { examId: string; name: string; answeredCount: number }[]
+  >([]);
 
   useEffect(() => {
     const load = async () => {
@@ -224,6 +225,9 @@ export default function MyPage() {
         ]);
         const examData = await examRes.json();
         if (examRes.ok && examData.current) setCurrentExam(examData.current);
+        if (examRes.ok && examData.studyingExams) {
+          setStudyingExams(examData.studyingExams);
+        }
 
         const analysisData = await analysisRes.json();
         if (analysisRes.ok) {
@@ -269,6 +273,26 @@ export default function MyPage() {
     }
   };
 
+  const handleSavePlannedExamDate = async () => {
+    setSavingDate(true);
+    setDateError(null);
+    try {
+      const res = await fetch("/api/user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plannedExamDate: plannedExamDateInput }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "受験予定日の設定に失敗しました");
+      setCurrentExam((prev) => (prev ? { ...prev, ...data.userExam } : prev));
+      setIsEditingDate(false);
+    } catch (e) {
+      setDateError(e instanceof Error ? e.message : "不明なエラーが発生しました");
+    } finally {
+      setSavingDate(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen justify-center bg-gray-100">
       <div className="flex w-full max-w-[430px] md:max-w-2xl flex-col border-x border-gray-200 bg-gray-50">
@@ -298,24 +322,30 @@ export default function MyPage() {
             </div>
           </Card>
 
-          {/* 学習中の試験(仮の値) */}
+          {/* 学習中の試験(10問以上解いたことがある試験のみ表示) */}
           <Card>
             <CardTitle>学習中の試験</CardTitle>
-            <div className="flex flex-wrap gap-2">
-              {STUDYING_EXAMS.map((exam) => {
-                const theme = getExamTheme(exam.examId);
-                const ExamIcon = theme.icon;
-                return (
-                  <span
-                    key={exam.examId}
-                    className="flex items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-800"
-                  >
-                    <ExamIcon className={`h-4 w-4 ${theme.fg}`} />
-                    {exam.name}
-                  </span>
-                );
-              })}
-            </div>
+            {studyingExams.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {studyingExams.map((exam) => {
+                  const theme = getExamTheme(exam.examId);
+                  const ExamIcon = theme.icon;
+                  return (
+                    <span
+                      key={exam.examId}
+                      className="flex items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-800"
+                    >
+                      <ExamIcon className={`h-4 w-4 ${theme.fg}`} />
+                      {exam.name}
+                    </span>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-[11px] text-gray-400">
+                10問以上解くと、ここに表示されます
+              </p>
+            )}
           </Card>
 
           {/* 学習目標(実データ・実機能。今月の目標の設定はホーム画面に移設) */}
@@ -338,10 +368,51 @@ export default function MyPage() {
                   <FlagIcon className="h-3.5 w-3.5" />
                   受験予定
                 </span>
-                <p className="text-sm font-bold text-gray-900">
-                  {currentExam?.planned_exam_date ?? "未設定"}
-                </p>
-                <p className="text-[11px] text-gray-400">{currentExam?.name ?? "-"}</p>
+                {!isEditingDate ? (
+                  <>
+                    <p className="text-sm font-bold text-gray-900">
+                      {currentExam?.planned_exam_date ?? "未設定"}
+                    </p>
+                    <p className="text-[11px] text-gray-400">{currentExam?.name ?? "-"}</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPlannedExamDateInput(currentExam?.planned_exam_date ?? "");
+                        setDateError(null);
+                        setIsEditingDate(true);
+                      }}
+                      className="text-[11px] text-blue-600 underline"
+                    >
+                      変更
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center gap-1">
+                    <input
+                      type="date"
+                      value={plannedExamDateInput}
+                      onChange={(e) => setPlannedExamDateInput(e.target.value)}
+                      className="w-28 rounded border border-gray-300 px-1 py-0.5 text-center text-xs"
+                    />
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={!plannedExamDateInput || savingDate}
+                        onClick={() => void handleSavePlannedExamDate()}
+                        className="text-[11px] font-semibold text-blue-600 disabled:opacity-50"
+                      >
+                        {savingDate ? "…" : "保存"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingDate(false)}
+                        className="text-[11px] text-gray-500"
+                      >
+                        キャンセル
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="flex flex-col items-center gap-1">
                 <span className="flex items-center gap-1 text-[11px] text-gray-500">
@@ -400,6 +471,12 @@ export default function MyPage() {
                 )}
               </div>
             </div>
+            {dateError && <p className="text-[11px] text-red-600">{dateError}</p>}
+            {currentExam?.target_syllabus_version && (
+              <p className="text-[11px] text-gray-400">
+                対象シラバス: {currentExam.target_syllabus_version}
+              </p>
+            )}
           </Card>
 
           {/* 通知(リマインドは/mypage/remindersで詳細設定。お知らせは今回のスコープ外のため仮の値・操作不可) */}

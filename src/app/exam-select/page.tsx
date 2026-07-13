@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { BackToHomeLink } from "@/components/BackToHomeLink";
 import { AppHeader } from "@/components/AppHeader";
 import { Chip } from "@/components/Chip";
@@ -22,7 +22,18 @@ interface RegisteredExam {
 }
 
 export default function ExamSelectPage() {
+  return (
+    <Suspense fallback={null}>
+      <ExamSelectPageContent />
+    </Suspense>
+  );
+}
+
+function ExamSelectPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // ホーム・学習・分析画面の「その他」から来た場合、選択後に元の画面へ戻る(既定はホーム)。
+  const returnTo = searchParams.get("from") || "/";
   const [exams, setExams] = useState<Exam[]>([]);
   const [registered, setRegistered] = useState<RegisteredExam[]>([]);
   const [currentExamId, setCurrentExamId] = useState<string | null>(null);
@@ -81,7 +92,7 @@ export default function ExamSelectPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "試験の選択に失敗しました");
-      router.push("/");
+      router.push(returnTo);
     } catch (e) {
       setError(e instanceof Error ? e.message : "不明なエラーが発生しました");
       setSelectingExamId(null);

@@ -13,6 +13,7 @@ import { MonthlyStudyGoalType } from "@/types/userExam";
 import { DEFAULT_EXAM_THEME, getExamTheme } from "@/components/examTheme";
 import { AppHeader } from "@/components/AppHeader";
 import { Chip } from "@/components/Chip";
+import { RecentExamTabs } from "@/components/RecentExamTabs";
 
 const HOUR_GOAL_OPTIONS = [5, 10, 20, 30, 50, 100];
 const QUESTION_GOAL_OPTIONS = [20, 50, 100, 200, 300, 500];
@@ -90,14 +91,6 @@ function CalendarIcon(props: { className?: string }) {
   );
 }
 
-function ChevronDownIcon(props: { className?: string }) {
-  return (
-    <IconWrapper {...props}>
-      <path d="M6 9l6 6 6-6" />
-    </IconWrapper>
-  );
-}
-
 function ChevronRightIcon(props: { className?: string }) {
   return (
     <IconWrapper {...props}>
@@ -164,10 +157,8 @@ function CheckCircleIcon(props: { className?: string }) {
 export default function HomePage() {
   const router = useRouter();
   const [currentExam, setCurrentExam] = useState<RegisteredExam | null>(null);
-  const [otherExams, setOtherExams] = useState<RegisteredExam[]>([]);
-  const [plannedExamDate, setPlannedExamDate] = useState("");
+  const [registeredExams, setRegisteredExams] = useState<RegisteredExam[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<WeakPointStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -178,7 +169,6 @@ export default function HomePage() {
   );
   const [monthlyGoalProgress, setMonthlyGoalProgress] =
     useState<MonthlyGoalProgress | null>(null);
-  const [isEditingDate, setIsEditingDate] = useState(false);
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [goalTypeInput, setGoalTypeInput] = useState<MonthlyStudyGoalType>("hours");
   const [goalValueInput, setGoalValueInput] = useState<number | null>(null);
@@ -225,13 +215,7 @@ export default function HomePage() {
           return;
         }
         setCurrentExam(data.current);
-        setOtherExams(
-          (data.registered as RegisteredExam[]).filter((r) => !r.is_current)
-        );
-        setPlannedExamDate(data.current.planned_exam_date ?? "");
-        if (!data.current.planned_exam_date) {
-          setIsEditingDate(true);
-        }
+        setRegisteredExams(data.registered as RegisteredExam[]);
       } catch (e) {
         setError(e instanceof Error ? e.message : "不明なエラーが発生しました");
       } finally {
@@ -261,26 +245,6 @@ export default function HomePage() {
     void loadInitialStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const handleSave = async () => {
-    setSaving(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/user", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plannedExamDate }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "受験予定日の設定に失敗しました");
-      setCurrentExam((prev) => (prev ? { ...prev, ...data.userExam } : prev));
-      await loadStats();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "不明なエラーが発生しました");
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const saveGoal = async (type: MonthlyStudyGoalType | null, value: number | null) => {
     setSavingGoal(true);
@@ -326,6 +290,16 @@ export default function HomePage() {
     setGoalTypeInput((currentExam?.monthly_study_goal_type as MonthlyStudyGoalType) ?? "hours");
     setGoalValueInput(currentExam?.monthly_study_goal_value ?? null);
     setIsEditingGoal(true);
+  };
+
+  // 「最近使った」タブで試験を切り替えたときの反映(統計・リマインド等も再取得する)。
+  const handleExamSwitched = (
+    newCurrent: RegisteredExam,
+    updatedRegistered: RegisteredExam[]
+  ) => {
+    setCurrentExam(newCurrent);
+    setRegisteredExams(updatedRegistered);
+    void loadStats();
   };
 
   const accuracyPercent = stats ? Math.round(stats.overallAccuracyRate * 100) : 0;
@@ -398,21 +372,17 @@ export default function HomePage() {
       <div className="flex w-full max-w-[430px] md:max-w-2xl flex-col border-x border-gray-200 bg-gray-50">
         <AppHeader title="ホーム" />
 
+        {error && <p className="p-4 text-sm text-red-600">{error}</p>}
+
         {loading || !currentExam ? (
           <p className="p-4 text-sm text-gray-500">読み込み中...</p>
         ) : (
           <main className="flex flex-col gap-4 p-4 md:p-6">
-            {/* 現在選択中の試験(切り替えは既存の試験選択画面へ遷移するのみ) */}
-            <Link
-              href="/exam-select"
-              className="flex w-fit min-w-0 items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1.5"
-            >
-              <ExamIcon className={`h-5 w-5 shrink-0 ${examTheme.fg}`} />
-              <p className="truncate text-base font-bold text-gray-900">
-                {currentExam.name}
-              </p>
-              <ChevronDownIcon className="h-4 w-4 shrink-0 text-gray-400" />
-            </Link>
+            <RecentExamTabs
+              currentExam={currentExam}
+              registeredExams={registeredExams}
+              onSwitched={handleExamSwitched}
+            />
 
             {/* 復習・学習リマインドバナー(ホーム画面表示のみ、通知等は行わない) */}
             {reminders && reminders.reviewNeededCount > 0 && (
@@ -830,78 +800,6 @@ export default function HomePage() {
             </section>
 
             {statsError && <p className="text-xs text-red-600">{statsError}</p>}
-
-            {otherExams.length > 0 && (
-              <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                <p className="text-xs text-gray-500">他の試験</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {otherExams.map((exam) => {
-                    const theme = getExamTheme(exam.exam_id);
-                    const OtherIcon = theme.icon;
-                    return (
-                      <Link
-                        key={exam.exam_id}
-                        href="/exam-select"
-                        className="flex items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1.5 text-sm text-gray-700"
-                      >
-                        <OtherIcon className={`h-4 w-4 ${theme.fg}`} />
-                        {exam.name}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
-
-            <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-              <div className="flex items-center gap-1.5">
-                <CalendarIcon className="h-3.5 w-3.5 text-gray-400" />
-                <p className="text-xs text-gray-500">受験予定日</p>
-              </div>
-              {!isEditingDate ? (
-                <div className="mt-1 flex items-center justify-between">
-                  <div>
-                    <p className="text-base font-semibold text-gray-900">
-                      {plannedExamDate || "未設定"}
-                    </p>
-                    <p className="text-xs text-gray-400">{currentExam.name}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingDate(true)}
-                    className="rounded-full border border-blue-600 px-3 py-1 text-xs font-semibold text-blue-600"
-                  >
-                    変更
-                  </button>
-                </div>
-              ) : (
-                <div className="mt-2 flex items-center gap-2">
-                  <input
-                    type="date"
-                    value={plannedExamDate}
-                    onChange={(e) => setPlannedExamDate(e.target.value)}
-                    className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                  />
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      await handleSave();
-                      setIsEditingDate(false);
-                    }}
-                    disabled={!plannedExamDate || saving}
-                    className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-gray-300"
-                  >
-                    {saving ? "保存中..." : "保存"}
-                  </button>
-                </div>
-              )}
-              {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
-              {currentExam?.target_syllabus_version && (
-                <p className="mt-2 text-xs text-gray-400">
-                  対象シラバス: {currentExam.target_syllabus_version}
-                </p>
-              )}
-            </section>
           </main>
         )}
       </div>
