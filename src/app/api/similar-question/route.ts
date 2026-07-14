@@ -301,6 +301,7 @@ async function handlePost(request: NextRequest) {
         audio_url: null,
         script_text: null,
         script_text_ja: null,
+        graphic_table: null,
         created_at: now,
         updated_at: now,
       };
@@ -450,6 +451,7 @@ async function generateAndInsertQuestionSet(params: {
           audio_url: null,
           script_text: null,
           script_text_ja: null,
+          graphic_table: null,
           created_at: now,
           updated_at: now,
         });
@@ -586,6 +588,7 @@ async function generateAndInsertListeningSimilarQuestion(params: {
         audio_url: audioUrl,
         script_text: generated.script_text,
         script_text_ja: scriptTextJa,
+        graphic_table: null,
         created_at: now,
         updated_at: now,
       };

@@ -80,8 +80,19 @@ export const QuestionSchema = z.object({
   script_text: z.string().nullable(),
   // script_textの日本語訳。画面表示機能は未実装(将来用)。
   script_text_ja: z.string().nullable(),
+  // TOEICリスニングPart3の図表問題用(価格表・スケジュール等)。JSON文字列(GraphicTableDataSchema)。
+  // 画像は使用しない。図表を伴わない問題ではnull。
+  graphic_table: z.string().nullable(),
   created_at: z.string(), // ISO日時
   updated_at: z.string(), // ISO日時
 });
 
 export type Question = z.infer<typeof QuestionSchema>;
+
+// questions.graphic_tableに格納するJSONの中身(価格表・スケジュール等を単純な表として表現する)。
+export const GraphicTableDataSchema = z.object({
+  title: z.string().nullable(),
+  headers: z.array(z.string()),
+  rows: z.array(z.array(z.string())),
+});
+export type GraphicTableData = z.infer<typeof GraphicTableDataSchema>;

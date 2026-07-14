@@ -7,6 +7,7 @@ import { getExamTheme } from "@/components/examTheme";
 import { AppHeader } from "@/components/AppHeader";
 import { getAuthBrowserClient } from "@/lib/supabase/authBrowserClient";
 import { RegisteredExam } from "@/lib/examPresenter";
+import packageJson from "../../../package.json";
 
 /**
  * マイページ画面。プロフィール(表示名・ログアウト)、学習目標(週間学習日数・受験予定)、
@@ -208,6 +209,7 @@ export default function MyPage() {
   const [studyingExams, setStudyingExams] = useState<
     { examId: string; name: string; answeredCount: number }[]
   >([]);
+  const [showContactNotice, setShowContactNotice] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -567,6 +569,33 @@ export default function MyPage() {
           <div className="flex items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
             <InfoIcon className="mt-0.5 h-4 w-4 shrink-0" />
             <p>今後、受験予定日や各種設定をここで管理できます</p>
+          </div>
+
+          {/* フッター(お問い合わせは枠のみ、準備中の案内を表示するだけ) */}
+          <div className="flex flex-col items-center gap-2 pb-4 pt-2 text-xs text-gray-500">
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() => setShowContactNotice((v) => !v)}
+                className="underline"
+              >
+                お問い合わせ
+              </button>
+              <Link href="/terms" className="underline">
+                利用規約
+              </Link>
+              <Link href="/privacy" className="underline">
+                プライバシーポリシー
+              </Link>
+            </div>
+            {showContactNotice && (
+              <p className="text-[11px] text-gray-400">
+                お問い合わせ機能は準備中です。
+              </p>
+            )}
+            <p className="text-[11px] text-gray-400">
+              アプリバージョン {packageJson.version}
+            </p>
           </div>
         </main>
       </div>

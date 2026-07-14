@@ -168,6 +168,7 @@ create table questions (
   audio_url text,
   script_text text,
   script_text_ja text, -- 音声スクリプトの日本語訳。画面表示機能は未実装(将来用)。
+  graphic_table text, -- TOEIC Part3の図表問題用。価格表・スケジュール等をJSON文字列で保持(画像は使わない)。
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

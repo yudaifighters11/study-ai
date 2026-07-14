@@ -131,6 +131,7 @@ async function handlePost(request: NextRequest) {
         audio_url: null,
         script_text: scriptText,
         script_text_ja: null,
+        graphic_table: null,
         created_at: now,
         updated_at: now,
       };
