@@ -16,6 +16,7 @@ const RequestSchema = z
     listeningShowChoiceText: z.boolean().optional(),
     // 決済機能は未実装のため、マイページの簡易トグルから直接切り替えられるようにしている。
     plan: PlanSchema.optional(),
+    displayName: z.string().min(1).max(50).optional(),
   })
   .refine((v) => Object.values(v).some((value) => value !== undefined), {
     message: "更新項目がありません",
@@ -64,6 +65,9 @@ export async function POST(request: NextRequest) {
       }),
       ...(parsed.data.plan !== undefined && {
         plan: parsed.data.plan,
+      }),
+      ...(parsed.data.displayName !== undefined && {
+        display_name: parsed.data.displayName,
       }),
     });
 

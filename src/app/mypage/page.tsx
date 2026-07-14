@@ -180,10 +180,10 @@ function CardTitle({ children }: { children: React.ReactNode }) {
 }
 
 const SETTINGS_ROWS = [
-  { icon: PersonIcon, label: "アカウント" },
-  { icon: SunIcon, label: "表示設定" },
-  { icon: BookIcon, label: "学習設定" },
-  { icon: HelpIcon, label: "ヘルプ" },
+  { icon: PersonIcon, label: "アカウント", href: "/mypage/account" },
+  { icon: SunIcon, label: "表示設定", href: "/mypage/display" },
+  { icon: BookIcon, label: "学習設定", href: null },
+  { icon: HelpIcon, label: "ヘルプ", href: null },
 ];
 
 interface CurrentUser {
@@ -534,22 +534,29 @@ export default function MyPage() {
             </Link>
           </Card>
 
-          {/* 設定(仮のリンク、遷移なし) */}
+          {/* 設定(「アカウント」以外は仮のリンク、遷移なし) */}
           <Card>
             <CardTitle>設定</CardTitle>
             <div className="flex flex-col">
               {SETTINGS_ROWS.map((row, i) => {
                 const RowIcon = row.icon;
-                return (
-                  <div
-                    key={row.label}
-                    className={`flex items-center gap-3 py-2.5 ${
-                      i > 0 ? "border-t border-gray-100" : ""
-                    }`}
-                  >
+                const rowClassName = `flex items-center gap-3 py-2.5 ${
+                  i > 0 ? "border-t border-gray-100" : ""
+                }`;
+                const content = (
+                  <>
                     <RowIcon className="h-4 w-4 text-gray-400" />
                     <p className="flex-1 text-sm text-gray-800">{row.label}</p>
                     <ChevronRightIcon className="h-4 w-4 text-gray-300" />
+                  </>
+                );
+                return row.href ? (
+                  <Link key={row.label} href={row.href} className={rowClassName}>
+                    {content}
+                  </Link>
+                ) : (
+                  <div key={row.label} className={rowClassName}>
+                    {content}
                   </div>
                 );
               })}

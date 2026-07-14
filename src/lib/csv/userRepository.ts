@@ -38,6 +38,7 @@ export async function updateUserSettings(
       | "listening_show_question_text"
       | "listening_show_choice_text"
       | "plan"
+      | "display_name"
     >
   >
 ): Promise<User> {
