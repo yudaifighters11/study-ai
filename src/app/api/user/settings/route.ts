@@ -14,6 +14,7 @@ const RequestSchema = z
     examProximityThresholdDays: z.number().int().min(1).max(60).optional(),
     listeningShowQuestionText: z.boolean().optional(),
     listeningShowChoiceText: z.boolean().optional(),
+    listeningShowConversationText: z.boolean().optional(),
     // 決済機能は未実装のため、マイページの簡易トグルから直接切り替えられるようにしている。
     plan: PlanSchema.optional(),
     displayName: z.string().min(1).max(50).optional(),
@@ -62,6 +63,9 @@ export async function POST(request: NextRequest) {
       }),
       ...(parsed.data.listeningShowChoiceText !== undefined && {
         listening_show_choice_text: parsed.data.listeningShowChoiceText,
+      }),
+      ...(parsed.data.listeningShowConversationText !== undefined && {
+        listening_show_conversation_text: parsed.data.listeningShowConversationText,
       }),
       ...(parsed.data.plan !== undefined && {
         plan: parsed.data.plan,

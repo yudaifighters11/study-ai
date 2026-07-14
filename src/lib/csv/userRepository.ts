@@ -37,6 +37,7 @@ export async function updateUserSettings(
       | "exam_proximity_threshold_days"
       | "listening_show_question_text"
       | "listening_show_choice_text"
+      | "listening_show_conversation_text"
       | "plan"
       | "display_name"
     >

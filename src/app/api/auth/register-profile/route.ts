@@ -60,6 +60,7 @@ export async function POST(request: NextRequest) {
       exam_proximity_threshold_days: 7,
       listening_show_question_text: true,
       listening_show_choice_text: true,
+      listening_show_conversation_text: false,
       plan: "free",
       created_at: new Date().toISOString(),
     });

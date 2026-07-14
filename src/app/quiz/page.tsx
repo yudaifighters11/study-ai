@@ -45,6 +45,12 @@ export default function QuizPage() {
   );
 }
 
+const LISTENING_DISPLAY_API_KEYS: Record<keyof ListeningDisplaySettings, string> = {
+  showQuestionText: "listeningShowQuestionText",
+  showChoiceText: "listeningShowChoiceText",
+  showConversationText: "listeningShowConversationText",
+};
+
 function QuizPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -97,6 +103,7 @@ function QuizPageContent() {
           setListeningDisplay({
             showQuestionText: data.user.listening_show_question_text,
             showChoiceText: data.user.listening_show_choice_text,
+            showConversationText: data.user.listening_show_conversation_text,
           });
         }
       } catch {
@@ -113,14 +120,14 @@ function QuizPageContent() {
     setListeningDisplay((prev) => ({
       showQuestionText: prev?.showQuestionText ?? true,
       showChoiceText: prev?.showChoiceText ?? true,
+      showConversationText: prev?.showConversationText ?? false,
       [field]: value,
     }));
     void fetch("/api/user/settings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        [field === "showQuestionText" ? "listeningShowQuestionText" : "listeningShowChoiceText"]:
-          value,
+        [LISTENING_DISPLAY_API_KEYS[field]]: value,
       }),
     });
   };

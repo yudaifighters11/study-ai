@@ -10,6 +10,7 @@ import { ConfidenceSelector } from "./ConfidenceSelector";
 export interface ListeningDisplaySettings {
   showQuestionText: boolean;
   showChoiceText: boolean;
+  showConversationText: boolean;
 }
 
 interface QuestionAnswerFormProps {
@@ -139,6 +140,9 @@ export function QuestionAnswerForm({
   const isListening = question.exam_type === "toeic_listening";
   const showQuestionText = !isListening || (listeningDisplay?.showQuestionText ?? true);
   const showChoiceText = !isListening || (listeningDisplay?.showChoiceText ?? true);
+  // 会話文(Part3等)は、複数設問が音声を共有する場合(passage_group_id あり)のみ切り替え対象にする。
+  const hasConversation = isListening && question.passage_group_id !== null;
+  const showConversationText = listeningDisplay?.showConversationText ?? false;
 
   const handleSubmit = () => {
     if (!selectedChoice) return;
@@ -204,6 +208,26 @@ export function QuestionAnswerForm({
               }
             />
           </div>
+          {hasConversation && (
+            <div className="flex items-center justify-between">
+              <span className="text-gray-700">会話文を表示</span>
+              <ToggleSwitch
+                checked={showConversationText}
+                onChange={() =>
+                  onChangeListeningDisplay(
+                    "showConversationText",
+                    !showConversationText
+                  )
+                }
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {hasConversation && showConversationText && question.script_text && (
+        <div className="whitespace-pre-wrap rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm leading-relaxed text-gray-800">
+          {question.script_text}
         </div>
       )}
 
